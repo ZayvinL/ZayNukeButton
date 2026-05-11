@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QTextBrowser, QLabel, QPushButton, QLineEdit, 
                                QSplitter, QMessageBox, QCheckBox,
                                QGroupBox, QFormLayout, QTabWidget,
-                               QTextEdit, QFileDialog, QScrollArea)
+                               QTextEdit, QFileDialog, QScrollArea, QSizePolicy)
 from PySide6.QtCore import Qt, QUrl, QSize
 from PySide6.QtGui import QFont, QClipboard, QImage, QPixmap
 from PySide6 import QtWidgets
@@ -167,12 +167,13 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         # 详情标签页
         detail_widget = QWidget()
         detail_layout = QVBoxLayout(detail_widget)
-        detail_layout.setContentsMargins(10, 10, 10, 10)
-        detail_layout.setSpacing(10)
+        detail_layout.setContentsMargins(0, 0, 0, 0)
+        detail_layout.setSpacing(0)
         
-        self.title_label = QLabel("选择工具查看详情")
-        detail_layout.addWidget(self.title_label)
+        # 使用 QSplitter 实现可调节的分区
+        detail_splitter = QSplitter(Qt.Vertical)
         
+        # 工具信息区域
         info_group = QGroupBox("工具信息")
         info_layout = QFormLayout()
         info_layout.setSpacing(8)
@@ -198,22 +199,31 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         info_layout.addRow("主文件:", self.lbl_file)
         
         info_group.setLayout(info_layout)
-        detail_layout.addWidget(info_group)
+        detail_splitter.addWidget(info_group)
         
-        stats_group = QGroupBox("使用统计")
-        stats_layout = QFormLayout()
-        stats_layout.setSpacing(8)
+        # 图标预览区域 - 占满剩余空间
+        icon_preview_group = QGroupBox("工具图标预览")
+        icon_preview_layout = QVBoxLayout()
+        icon_preview_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.lbl_usage = QLabel("0")
-        stats_layout.addRow("使用次数:", self.lbl_usage)
+        self.icon_preview_label = QLabel()
+        self.icon_preview_label.setAlignment(Qt.AlignCenter)
+        self.icon_preview_label.setStyleSheet("""
+            background-color: #1e1e1e;
+            border: none;
+        """)
+        self.icon_preview_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.icon_preview_label.setText("无图标")
+        icon_preview_layout.addWidget(self.icon_preview_label)
         
-        self.lbl_last = QLabel("未使用")
-        stats_layout.addRow("最后使用:", self.lbl_last)
+        icon_preview_group.setLayout(icon_preview_layout)
+        detail_splitter.addWidget(icon_preview_group)
         
-        stats_group.setLayout(stats_layout)
-        detail_layout.addWidget(stats_group)
+        # 设置图标预览区域为拉伸因子
+        detail_splitter.setStretchFactor(0, 0)  # 工具信息不拉伸
+        detail_splitter.setStretchFactor(1, 1)  # 图标预览自动拉伸
         
-        detail_layout.addStretch()
+        detail_layout.addWidget(detail_splitter)
         
         tabs.addTab(detail_widget, "详情")
         
@@ -379,7 +389,48 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         self.db_path = sfs.get_user_db_path()
         username = sfs.get_current_user()
         db_uuid = sfs.get_current_user_db_uuid()
-        self.lbl_db.setText(f"用户: {username} | 数据库: {db_uuid[:8]}...")
+        self.lbl_db.setText(f"用户: {username} | 数据库: {db_uuid}")
+    
+    def load_icon_preview(self):
+        """加载工具图标到大预览区域"""
+        icon_file = self.current_tool_data.get('icon_file')
+        
+        if not icon_file:
+            self.icon_preview_label.setText("无图标")
+            self.icon_preview_label.setPixmap(QPixmap())
+            return
+        
+        try:
+            tools_root = psp.tools_path_get()
+            icon_full_path = os.path.join(tools_root, icon_file.replace('/', os.sep))
+            
+            if not os.path.exists(icon_full_path):
+                self.icon_preview_label.setText("图标文件不存在")
+                self.icon_preview_label.setPixmap(QPixmap())
+                return
+            
+            # 加载图片
+            pixmap = QPixmap(icon_full_path)
+            
+            if pixmap.isNull():
+                self.icon_preview_label.setText("无法加载图标")
+                self.icon_preview_label.setPixmap(QPixmap())
+                return
+            
+            # 缩放图片以适应预览区域（保持宽高比）
+            scaled_pixmap = pixmap.scaled(
+                self.icon_preview_label.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            
+            self.icon_preview_label.setPixmap(scaled_pixmap)
+            self.icon_preview_label.setText("")
+            
+        except Exception as e:
+            self.icon_preview_label.setText(f"加载失败: {str(e)}")
+            self.icon_preview_label.setPixmap(QPixmap())
+            print(f"加载图标预览失败: {e}")
 
     def set_filter(self, filter_type):
         if filter_type == "all":
@@ -588,7 +639,6 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         
         self.current_tool_data = current.data(Qt.ItemDataRole.UserRole)
         name = self.current_tool_data.get('name', '')
-        self.title_label.setText(name)
         
         self.lbl_id.setText(self.current_tool_data.get('id', 'N/A'))
         self.lbl_name.setText(self.current_tool_data.get('name', 'N/A'))
@@ -609,9 +659,8 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         full_path = os.path.join(tools_root, main_file.replace('/', os.sep))
         self.lbl_file.setText(full_path)
         
-        self.lbl_usage.setText(str(self.current_tool_data.get('usage_count', 0)))
-        last_used = self.current_tool_data.get('last_used', '未使用')
-        self.lbl_last.setText(str(last_used) if last_used else '未使用')
+        # 加载图标预览
+        self.load_icon_preview()
         
         self.json_view.setPlainText(json.dumps(self.current_tool_data, indent=2, ensure_ascii=False))
         
