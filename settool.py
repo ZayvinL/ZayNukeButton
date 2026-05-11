@@ -2,16 +2,21 @@ import os
 import sys
 import json
 import sqlite3
+import shutil
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                QHBoxLayout, QListWidget, QListWidgetItem, 
                                QTextBrowser, QLabel, QPushButton, QLineEdit, 
                                QSplitter, QMessageBox, QCheckBox,
-                               QGroupBox, QFormLayout, QTabWidget)
+                               QGroupBox, QFormLayout, QTabWidget,
+                               QTextEdit, QFileDialog, QScrollArea)
 from PySide6.QtCore import Qt, QUrl, QSize, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QClipboard, QImage, QPixmap
+from PySide6 import QtWidgets
 
 import paths_setup as psp
 import sqlite_file_setup as sfs
+import toolsfile_json as tfj
+
 
 class ToolItemWidget(QWidget):
     """自定义工具列表项"""
@@ -185,6 +190,7 @@ class ToolManagerApp(QMainWindow):
         
         tabs = QTabWidget()
         
+        # 详情标签页
         detail_widget = QWidget()
         detail_layout = QVBoxLayout(detail_widget)
         detail_layout.setContentsMargins(10, 10, 10, 10)
@@ -237,6 +243,7 @@ class ToolManagerApp(QMainWindow):
         
         tabs.addTab(detail_widget, "详情")
         
+        # JSON 标签页
         json_widget = QWidget()
         json_layout = QVBoxLayout(json_widget)
         self.json_view = QTextBrowser()
@@ -244,12 +251,125 @@ class ToolManagerApp(QMainWindow):
         json_layout.addWidget(self.json_view)
         tabs.addTab(json_widget, "JSON")
         
+        # 帮助标签页
         help_widget = QWidget()
         help_layout = QVBoxLayout(help_widget)
         self.html_view = QTextBrowser()
         self.html_view.setOpenExternalLinks(True)
         help_layout.addWidget(self.html_view)
         tabs.addTab(help_widget, "帮助")
+        
+        # 编辑标签页（新增）
+        edit_widget = QWidget()
+        edit_layout = QVBoxLayout(edit_widget)
+        edit_layout.setContentsMargins(10, 10, 10, 10)
+        edit_layout.setSpacing(10)
+        
+        # 编辑工具名称
+        name_edit_group = QGroupBox("修改工具名称")
+        name_edit_layout = QVBoxLayout(name_edit_group)
+        
+        name_input_layout = QHBoxLayout()
+        self.edit_tool_name = QLineEdit()
+        self.edit_tool_name.setPlaceholderText("输入新的工具名称")
+        name_input_layout.addWidget(self.edit_tool_name)
+        
+        self.btn_rename = QPushButton("重命名工具")
+        self.btn_rename.clicked.connect(self.rename_tool)
+        name_input_layout.addWidget(self.btn_rename)
+        
+        name_edit_layout.addLayout(name_input_layout)
+        edit_layout.addWidget(name_edit_group)
+        
+        # 编辑标签和匹配类
+        meta_edit_group = QGroupBox("编辑元数据")
+        meta_edit_layout = QVBoxLayout(meta_edit_group)
+        
+        # 标签编辑
+        tag_layout = QHBoxLayout()
+        self.edit_tag = QLineEdit()
+        self.edit_tag.setPlaceholderText("输入工具标签（如：合成、抠像、调色）")
+        tag_layout.addWidget(self.edit_tag)
+        
+        self.btn_save_tag = QPushButton("保存标签")
+        self.btn_save_tag.clicked.connect(self.save_tag)
+        tag_layout.addWidget(self.btn_save_tag)
+        
+        meta_edit_layout.addLayout(tag_layout)
+        
+        # 匹配类编辑
+        matchclass_layout = QHBoxLayout()
+        self.edit_matchclass = QLineEdit()
+        self.edit_matchclass.setPlaceholderText("输入匹配类（多个用逗号分隔，如：Read,Write,Transform）")
+        matchclass_layout.addWidget(self.edit_matchclass)
+        
+        self.btn_save_matchclass = QPushButton("保存匹配类")
+        self.btn_save_matchclass.clicked.connect(self.save_matchclass)
+        matchclass_layout.addWidget(self.btn_save_matchclass)
+        
+        meta_edit_layout.addLayout(matchclass_layout)
+        
+        edit_layout.addWidget(meta_edit_group)
+        
+        # 添加图标
+        icon_group = QGroupBox("添加工具图标")
+        icon_layout = QVBoxLayout(icon_group)
+        
+        icon_info = QLabel('提示：将图标图片复制到剪贴板，然后点击"从剪贴板获取"按钮')
+        icon_info.setWordWrap(True)
+        icon_info.setStyleSheet("color: #aaa; font-size: 11px;")
+        icon_layout.addWidget(icon_info)
+        
+        icon_btn_layout = QHBoxLayout()
+        self.btn_get_clipboard = QPushButton("从剪贴板获取图标")
+        self.btn_get_clipboard.clicked.connect(self.get_icon_from_clipboard)
+        icon_btn_layout.addWidget(self.btn_get_clipboard)
+        
+        self.btn_save_icon = QPushButton("保存图标")
+        self.btn_save_icon.clicked.connect(self.save_icon)
+        self.btn_save_icon.setEnabled(False)
+        icon_btn_layout.addWidget(self.btn_save_icon)
+        
+        icon_layout.addLayout(icon_btn_layout)
+        
+        self.lbl_icon_preview = QLabel("图标预览")
+        self.lbl_icon_preview.setAlignment(Qt.AlignCenter)
+        self.lbl_icon_preview.setMinimumSize(100, 100)
+        self.lbl_icon_preview.setStyleSheet("border: 1px solid #555; background: #2a2a2a;")
+        icon_layout.addWidget(self.lbl_icon_preview)
+        
+        edit_layout.addWidget(icon_group)
+        
+        # 编辑帮助文档
+        help_edit_group = QGroupBox("编辑帮助文档")
+        help_edit_layout = QVBoxLayout(help_edit_group)
+        
+        help_btn_layout = QHBoxLayout()
+        self.btn_load_help = QPushButton("加载帮助文档")
+        self.btn_load_help.clicked.connect(self.load_help_editor)
+        help_btn_layout.addWidget(self.btn_load_help)
+        
+        self.btn_insert_image = QPushButton("插入图片")
+        self.btn_insert_image.clicked.connect(self.insert_image_to_help)
+        help_btn_layout.addWidget(self.btn_insert_image)
+        
+        self.btn_save_help = QPushButton("保存帮助文档")
+        self.btn_save_help.clicked.connect(self.save_help_document)
+        help_btn_layout.addWidget(self.btn_save_help)
+        
+        help_edit_layout.addLayout(help_btn_layout)
+        
+        self.help_editor = QTextEdit()
+        self.help_editor.setPlaceholderText("在此编辑 HTML 内容，支持富文本和图片...\n\n提示：\n1. 可以粘贴图片（Ctrl+V）\n2. 点击插入图片按钮从文件添加\n3. 支持文字格式、列表、表格等")
+        self.help_editor.setMinimumHeight(300)
+        self.help_editor.setAcceptRichText(True)
+        help_edit_layout.addWidget(self.help_editor)
+        
+        edit_layout.addWidget(help_edit_group)
+        
+        edit_layout.addStretch()
+        
+        tabs.addTab(edit_widget, "编辑")
         
         right_layout.addWidget(tabs)
         
@@ -262,6 +382,9 @@ class ToolManagerApp(QMainWindow):
         
         self.update_db_info()
         self.update_stats()
+        
+        # 剪贴板图片缓存
+        self.clipboard_image = None
 
     def ensure_database_exists(self):
         """确保数据库存在，如果不存在则自动创建"""
@@ -521,15 +644,517 @@ class ToolManagerApp(QMainWindow):
         
         self.json_view.setPlainText(json.dumps(self.current_tool_data, indent=2, ensure_ascii=False))
         
+        # 更新编辑框的值
+        self.edit_tool_name.clear()
+        self.edit_tag.setText(self.current_tool_data.get('tag', ''))
+        
+        matchClass = self.current_tool_data.get('matchClass', [])
+        if isinstance(matchClass, str):
+            try:
+                matchClass = json.loads(matchClass)
+            except:
+                matchClass = []
+        self.edit_matchclass.setText(', '.join(matchClass) if matchClass else '')
+        
         help_file = self.current_tool_data.get('help_file')
         if help_file:
             help_full = os.path.join(tools_root, help_file.replace('/', os.sep))
             if os.path.exists(help_full):
-                self.html_view.setSource(QUrl.fromLocalFile(help_full))
+                # 设置基础 URL，使相对路径的图片能正确加载
+                base_url = QUrl.fromLocalFile(help_full + '/')
+                self.html_view.setSource(base_url)
             else:
                 self.html_view.setHtml("<h3>未找到帮助文档</h3>")
         else:
             self.html_view.setHtml("<h3>此工具没有帮助文档</h3>")
+
+    def rename_tool(self):
+        """修改工具名称并同步到实际文件"""
+        if not self.current_tool_data:
+            QMessageBox.warning(self, "警告", "请先选择一个工具")
+            return
+        
+        new_name = self.edit_tool_name.text().strip()
+        if not new_name:
+            QMessageBox.warning(self, "警告", "请输入新的工具名称")
+            return
+        
+        tool_id = self.current_tool_data.get('id')
+        old_name = self.current_tool_data.get('name', '')
+        main_file = self.current_tool_data.get('main_file', '')
+        
+        if not main_file:
+            QMessageBox.critical(self, "错误", "工具没有主文件路径")
+            return
+        
+        tools_root = psp.tools_path_get()
+        old_full_path = os.path.join(tools_root, main_file.replace('/', os.sep))
+        
+        if not os.path.exists(old_full_path):
+            QMessageBox.critical(self, "错误", f"原文件不存在:\n{old_full_path}")
+            return
+        
+        # 获取文件扩展名
+        base_name, ext = os.path.splitext(old_full_path)
+        new_file_name = new_name + ext
+        
+        # 新文件路径
+        new_full_path = os.path.join(os.path.dirname(old_full_path), new_file_name)
+        
+        if old_full_path == new_full_path:
+            QMessageBox.information(self, "提示", "文件名没有变化")
+            return
+        
+        # 重命名主文件
+        try:
+            os.rename(old_full_path, new_full_path)
+            print(f"重命名主文件: {old_full_path} -> {new_full_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"重命名主文件失败:\n{str(e)}")
+            return
+        
+        # 重命名关联文件（.json, .png, .html）
+        associated_files = []
+        for suffix in ['.json', '.png', '.html']:
+            old_assoc = base_name + suffix
+            if os.path.exists(old_assoc):
+                new_assoc = os.path.join(os.path.dirname(old_full_path), new_name + suffix)
+                try:
+                    os.rename(old_assoc, new_assoc)
+                    associated_files.append(new_assoc)
+                    print(f"重命名关联文件: {old_assoc} -> {new_assoc}")
+                except Exception as e:
+                    print(f"重命名关联文件失败 {old_assoc}: {e}")
+        
+        # 更新 JSON 元数据
+        try:
+            # 计算新的相对路径
+            new_main_rel = os.path.relpath(new_full_path, tools_root).replace(os.sep, '/')
+            new_json_rel = None
+            
+            if associated_files:
+                for f in associated_files:
+                    if f.endswith('.json'):
+                        new_json_rel = os.path.relpath(f, tools_root).replace(os.sep, '/')
+                        break
+            
+            # 更新数据库
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE tools_index 
+                SET name = ?, main_file = ?
+                WHERE id = ?
+            ''', (new_name, new_main_rel, tool_id))
+            conn.commit()
+            conn.close()
+            
+            # 更新 JSON 文件
+            if new_json_rel:
+                json_path = os.path.join(tools_root, new_json_rel.replace('/', os.sep))
+                if os.path.exists(json_path):
+                    with open(json_path, 'r', encoding='utf-8') as f:
+                        metadata = json.load(f)
+                    
+                    metadata['name'] = new_name
+                    metadata['files']['main'] = new_main_rel
+                    
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(metadata, f, indent=2, ensure_ascii=False)
+            
+            # 更新当前工具数据
+            self.current_tool_data['name'] = new_name
+            self.current_tool_data['main_file'] = new_main_rel
+            
+            # 刷新界面
+            self.on_selection_changed(self.tool_list.currentItem(), None)
+            self.load_tools_from_db()
+            
+            QMessageBox.information(self, "成功", f"工具已重命名为:\n{new_name}")
+            self.edit_tool_name.clear()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"更新元数据失败:\n{str(e)}")
+
+    def get_icon_from_clipboard(self):
+        """从剪贴板获取图片"""
+        clipboard = QApplication.clipboard()
+        mime_data = clipboard.mimeData()
+        
+        if mime_data.hasImage():
+            image = clipboard.image()
+            if not image.isNull():
+                self.clipboard_image = image
+                
+                # 显示预览
+                pixmap = QPixmap.fromImage(image)
+                scaled_pixmap = pixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self.lbl_icon_preview.setPixmap(scaled_pixmap)
+                
+                self.btn_save_icon.setEnabled(True)
+                QMessageBox.information(self, "成功", '已从剪贴板获取图标，点击"保存图标"按钮保存')
+            else:
+                QMessageBox.warning(self, "警告", "剪贴板中的图片数据无效")
+        elif mime_data.hasUrls():
+            # 如果剪贴板有文件路径
+            urls = mime_data.urls()
+            if urls:
+                file_path = urls[0].toLocalFile()
+                if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                    image = QImage(file_path)
+                    if not image.isNull():
+                        self.clipboard_image = image
+                        
+                        pixmap = QPixmap.fromImage(image)
+                        scaled_pixmap = pixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        self.lbl_icon_preview.setPixmap(scaled_pixmap)
+                        
+                        self.btn_save_icon.setEnabled(True)
+                        QMessageBox.information(self, "成功", f"已加载图标文件:\n{file_path}")
+                    else:
+                        QMessageBox.warning(self, "警告", "无法加载图片文件")
+                else:
+                    QMessageBox.warning(self, "警告", "剪贴板中的文件不是图片格式")
+        else:
+            QMessageBox.warning(self, "警告", "剪贴板中没有图片数据\n请先复制图片到剪贴板")
+
+    def save_icon(self):
+        """保存图标到工具目录"""
+        if not self.current_tool_data:
+            QMessageBox.warning(self, "警告", "请先选择一个工具")
+            return
+        
+        if not self.clipboard_image:
+            QMessageBox.warning(self, "警告", "没有可保存的图标")
+            return
+        
+        tool_id = self.current_tool_data.get('id')
+        main_file = self.current_tool_data.get('main_file', '')
+        
+        if not main_file:
+            QMessageBox.critical(self, "错误", "工具没有主文件路径")
+            return
+        
+        tools_root = psp.tools_path_get()
+        main_full_path = os.path.join(tools_root, main_file.replace('/', os.sep))
+        
+        # 图标保存路径：与主文件同名，扩展名为 .png
+        base_name = os.path.splitext(main_full_path)[0]
+        icon_path = base_name + '.png'
+        
+        try:
+            # 保存图片
+            self.clipboard_image.save(icon_path, 'PNG')
+            print(f"保存图标: {icon_path}")
+            
+            # 更新数据库
+            icon_rel_path = os.path.relpath(icon_path, tools_root).replace(os.sep, '/')
+            
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE tools_index 
+                SET icon_file = ?, has_icon = 1
+                WHERE id = ?
+            ''', (icon_rel_path, tool_id))
+            conn.commit()
+            conn.close()
+            
+            # 更新 JSON 文件
+            for suffix in ['.json']:
+                json_path = base_name + suffix
+                if os.path.exists(json_path):
+                    with open(json_path, 'r', encoding='utf-8') as f:
+                        metadata = json.load(f)
+                    
+                    metadata['files']['icon'] = icon_rel_path
+                    
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(metadata, f, indent=2, ensure_ascii=False)
+                    break
+            
+            # 更新当前工具数据
+            self.current_tool_data['icon_file'] = icon_rel_path
+            self.current_tool_data['has_icon'] = 1
+            
+            # 刷新界面
+            self.on_selection_changed(self.tool_list.currentItem(), None)
+            
+            self.clipboard_image = None
+            self.lbl_icon_preview.setText("图标预览")
+            self.lbl_icon_preview.setPixmap(QPixmap())
+            self.btn_save_icon.setEnabled(False)
+            
+            QMessageBox.information(self, "成功", "图标已保存")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"保存图标失败:\n{str(e)}")
+
+    def load_help_editor(self):
+        """加载帮助文档到编辑器"""
+        if not self.current_tool_data:
+            QMessageBox.warning(self, "警告", "请先选择一个工具")
+            return
+        
+        help_file = self.current_tool_data.get('help_file')
+        
+        if not help_file:
+            # 创建新的帮助文档
+            reply = QMessageBox.question(self, "提示", 
+                                        "此工具没有帮助文档，是否创建新的？",
+                                        QMessageBox.Yes | QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                self.help_editor.setHtml("<h2>帮助文档</h2><p>在此添加说明...</p>")
+            return
+        
+        tools_root = psp.tools_path_get()
+        help_full_path = os.path.join(tools_root, help_file.replace('/', os.sep))
+        
+        if not os.path.exists(help_full_path):
+            QMessageBox.warning(self, "警告", f"帮助文档不存在:\n{help_full_path}")
+            return
+        
+        try:
+            with open(help_full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            self.help_editor.setHtml(content)
+            QMessageBox.information(self, "成功", "帮助文档已加载")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"加载帮助文档失败:\n{str(e)}")
+
+    def insert_image_to_help(self):
+        """从剪贴板获取图片并插入到帮助文档编辑器"""
+        if not self.current_tool_data:
+            QMessageBox.warning(self, "警告", "请先选择一个工具")
+            return
+        
+        clipboard = QApplication.clipboard()
+        mime_data = clipboard.mimeData()
+        
+        if not mime_data.hasImage():
+            QMessageBox.warning(self, "警告", "剪贴板中没有图片\n请先复制图片到剪贴板")
+            return
+        
+        image = clipboard.image()
+        if image.isNull():
+            QMessageBox.warning(self, "警告", "剪贴板中的图片数据无效")
+            return
+        
+        # 生成唯一的图片文件名
+        import uuid
+        tool_name = self.current_tool_data.get('name', 'tool')
+        # 清理文件名中的非法字符
+        safe_name = "".join(c for c in tool_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        image_filename = f"{safe_name}_{uuid.uuid4().hex[:8]}.png"
+        
+        # 保存到 pnghelp 文件夹
+        pnghelp_dir = os.path.join(psp.get_project_root(), 'pnghelp')
+        os.makedirs(pnghelp_dir, exist_ok=True)
+        
+        image_path = os.path.join(pnghelp_dir, image_filename)
+        
+        try:
+            # 保存图片
+            image.save(image_path, 'PNG')
+            print(f"保存图片到: {image_path}")
+            
+            # 计算相对路径（相对于 pnghelp 文件夹）
+            # HTML 中使用相对路径引用 pnghelp 文件夹中的图片
+            html_image_path = f"../pnghelp/{image_filename}"
+            
+            # 插入图片到编辑器光标位置
+            cursor = self.help_editor.textCursor()
+            cursor.insertHtml(f'<img src="{html_image_path}" alt="{image_filename}" style="max-width: 100%;"/>')
+            
+            QMessageBox.information(self, "成功", f"已插入图片:\n{image_filename}\n保存到: pnghelp 文件夹")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"保存图片失败:\n{str(e)}")
+
+    def save_help_document(self):
+        """保存帮助文档"""
+        if not self.current_tool_data:
+            QMessageBox.warning(self, "警告", "请先选择一个工具")
+            return
+        
+        help_file = self.current_tool_data.get('help_file')
+        main_file = self.current_tool_data.get('main_file', '')
+        
+        if not main_file:
+            QMessageBox.critical(self, "错误", "工具没有主文件路径")
+            return
+        
+        tools_root = psp.tools_path_get()
+        main_full_path = os.path.join(tools_root, main_file.replace('/', os.sep))
+        base_name = os.path.splitext(main_full_path)[0]
+        
+        # 如果没有帮助文件，创建新的
+        if not help_file:
+            help_file = base_name + '.html'
+            help_full_path = help_file
+        else:
+            help_full_path = os.path.join(tools_root, help_file.replace('/', os.sep))
+        
+        try:
+            # 获取编辑器内容
+            html_content = self.help_editor.toHtml()
+            
+            # 保存 HTML 文件
+            with open(help_full_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            print(f"保存帮助文档: {help_full_path}")
+            
+            # 更新数据库
+            help_rel_path = os.path.relpath(help_full_path, tools_root).replace(os.sep, '/')
+            tool_id = self.current_tool_data.get('id')
+            
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE tools_index 
+                SET help_file = ?, has_help = 1
+                WHERE id = ?
+            ''', (help_rel_path, tool_id))
+            conn.commit()
+            conn.close()
+            
+            # 更新 JSON 文件
+            for suffix in ['.json']:
+                json_path = base_name + suffix
+                if os.path.exists(json_path):
+                    with open(json_path, 'r', encoding='utf-8') as f:
+                        metadata = json.load(f)
+                    
+                    metadata['files']['help'] = help_rel_path
+                    
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(metadata, f, indent=2, ensure_ascii=False)
+                    break
+            
+            # 更新当前工具数据
+            self.current_tool_data['help_file'] = help_rel_path
+            self.current_tool_data['has_help'] = 1
+            
+            # 刷新帮助标签页
+            self.html_view.setHtml(html_content)
+            
+            QMessageBox.information(self, "成功", "帮助文档已保存")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"保存帮助文档失败:\n{str(e)}")
+
+    def save_tag(self):
+        """保存标签到数据库和 JSON"""
+        if not self.current_tool_data:
+            QMessageBox.warning(self, "警告", "请先选择一个工具")
+            return
+        
+        new_tag = self.edit_tag.text().strip()
+        tool_id = self.current_tool_data.get('id')
+        
+        try:
+            # 更新数据库
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE tools_index 
+                SET tag = ?
+                WHERE id = ?
+            ''', (new_tag, tool_id))
+            conn.commit()
+            conn.close()
+            
+            # 更新 JSON 文件
+            main_file = self.current_tool_data.get('main_file', '')
+            if main_file:
+                tools_root = psp.tools_path_get()
+                main_full_path = os.path.join(tools_root, main_file.replace('/', os.sep))
+                base_name = os.path.splitext(main_full_path)[0]
+                
+                for suffix in ['.json']:
+                    json_path = base_name + suffix
+                    if os.path.exists(json_path):
+                        with open(json_path, 'r', encoding='utf-8') as f:
+                            metadata = json.load(f)
+                        
+                        metadata['tag'] = new_tag
+                        
+                        with open(json_path, 'w', encoding='utf-8') as f:
+                            json.dump(metadata, f, indent=2, ensure_ascii=False)
+                        break
+            
+            # 更新当前工具数据
+            self.current_tool_data['tag'] = new_tag
+            
+            # 刷新界面
+            self.on_selection_changed(self.tool_list.currentItem(), None)
+            self.load_tools_from_db()
+            
+            QMessageBox.information(self, "成功", f"标签已保存:\n{new_tag if new_tag else '无'}")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"保存标签失败:\n{str(e)}")
+    
+    def save_matchclass(self):
+        """保存匹配类到数据库和 JSON"""
+        if not self.current_tool_data:
+            QMessageBox.warning(self, "警告", "请先选择一个工具")
+            return
+        
+        matchclass_text = self.edit_matchclass.text().strip()
+        tool_id = self.current_tool_data.get('id')
+        
+        # 解析逗号分隔的字符串为列表
+        matchclass_list = [item.strip() for item in matchclass_text.split(',') if item.strip()] if matchclass_text else []
+        
+        try:
+            # 更新数据库（存储为 JSON 字符串）
+            matchclass_json = json.dumps(matchclass_list, ensure_ascii=False)
+            
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE tools_index 
+                SET matchClass = ?
+                WHERE id = ?
+            ''', (matchclass_json, tool_id))
+            conn.commit()
+            conn.close()
+            
+            # 更新 JSON 文件
+            main_file = self.current_tool_data.get('main_file', '')
+            if main_file:
+                tools_root = psp.tools_path_get()
+                main_full_path = os.path.join(tools_root, main_file.replace('/', os.sep))
+                base_name = os.path.splitext(main_full_path)[0]
+                
+                for suffix in ['.json']:
+                    json_path = base_name + suffix
+                    if os.path.exists(json_path):
+                        with open(json_path, 'r', encoding='utf-8') as f:
+                            metadata = json.load(f)
+                        
+                        metadata['matchClass'] = matchclass_list
+                        
+                        with open(json_path, 'w', encoding='utf-8') as f:
+                            json.dump(metadata, f, indent=2, ensure_ascii=False)
+                        break
+            
+            # 更新当前工具数据
+            self.current_tool_data['matchClass'] = matchclass_list
+            
+            # 刷新界面
+            self.on_selection_changed(self.tool_list.currentItem(), None)
+            self.load_tools_from_db()
+            
+            display_text = ', '.join(matchclass_list) if matchclass_list else '无'
+            QMessageBox.information(self, "成功", f"匹配类已保存:\n{display_text}")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"保存匹配类失败:\n{str(e)}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
