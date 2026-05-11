@@ -63,3 +63,5 @@ wheels/
 /ENote.build
 /tools
 /venv
+/libs
+/pnghelp

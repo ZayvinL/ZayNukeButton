@@ -21,3 +21,9 @@ def styles_path_get():
 def users_path_get():
     usersPath = local_path_get() + "users/"
     return usersPath
+
+
+# pngfiles
+def pngfiles_path_get():
+    pngfilesPath = local_path_get() + "pnghelp/"
+    return pngfilesPath
