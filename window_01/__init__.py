@@ -19,9 +19,12 @@ def init_search_window():
     """初始化搜索窗口"""
     global _search_window_instance
     
-    if _search_window_instance is None:
-        toolbox_path = _get_toolbox_path()
-        _search_window_instance = SearchToolWindow(toolbox_path)
+    # 如果实例已存在，重新创建（确保代码更改生效）
+    if _search_window_instance is not None:
+        _search_window_instance = None
+    
+    toolbox_path = _get_toolbox_path()
+    _search_window_instance = SearchToolWindow(toolbox_path)
     
     return _search_window_instance
 

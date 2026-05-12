@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QGridLayout, QScrollArea, QLineEdit, QPushButton, 
     QLabel, QMessageBox
 )
+from PySide6.QtGui import QKeySequence, QShortcut
 
 from window_01.config import _get_user_db_path, _get_toolbox_path
 from window_01.db import FastDBQuery, IconCache, SmartCache
@@ -24,16 +25,18 @@ class SearchToolWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle(" 工具搜索")
         self.setGeometry(100, 100, 100, 100)
-        self.setMinimumSize(500, 350)
-        self.setMaximumSize(900, 600)
+        self.setMinimumSize(800, 400)
+        self.setMaximumSize(800, 400)
+        
+        
         
         self.toolbox_path = toolbox_path
         
         # 布局参数配置（可调整）
-        self.tools_per_row = 3  # 每行显示数量
-        self.page_size = self.tools_per_row * 3  # 每次加载数量（3的倍数）
-        self.button_width = 150  # 按钮固定宽度（可调整）
-        self.button_height = 70  # 按钮固定高度（可调整）
+        self.tools_per_row = 5  # 每行显示数量
+        self.page_size = self.tools_per_row * 5  # 每次加载数量（3的倍数）
+        self.button_width = 250  # 按钮固定宽度（可调整）
+        self.button_height = 80  # 按钮固定高度（可调整）
         self.grid_spacing = 10  # 按钮间距（可调整）
         self.grid_margins = 10  # 网格边距（可调整）
         
@@ -47,10 +50,15 @@ class SearchToolWindow(QMainWindow):
         self.icon_cache = IconCache(toolbox_path)
         self.smart_cache = SmartCache(max_size=100)
         
-        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Tool)
+
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+        # self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Tool)
         
-        self.setAttribute(Qt.WA_NoSystemBackground, False)
-        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        # self.setAttribute(Qt.WA_NoSystemBackground, False)
+        # self.setAttribute(Qt.WA_TranslucentBackground, False)
         
         self.dragging = False
         self.offset = None
@@ -60,8 +68,15 @@ class SearchToolWindow(QMainWindow):
         
         self._setup_ui()
         self.installEventFilter(self)
+        # 绑定 ESC 快捷键关闭窗口
+        self._setup_shortcuts()
         
         QTimer.singleShot(100, self._load_initial_data)
+
+    def _setup_shortcuts(self):
+        """设置快捷键"""
+        esc_shortcut = QShortcut(QKeySequence("Esc"), self)
+        esc_shortcut.activated.connect(self.hide)
     
     def _setup_ui(self):
         """设置UI"""
@@ -77,6 +92,7 @@ class SearchToolWindow(QMainWindow):
         title_layout.setContentsMargins(10, 5, 10, 5)
         
         title_label = QLabel(" 工具搜索")
+        title_label.setVisible(False)
         title_label.setStyleSheet("""
             QLabel {
                 color: rgba(220, 230, 240, 255);
@@ -131,15 +147,15 @@ class SearchToolWindow(QMainWindow):
         main_layout.addLayout(search_layout)
         
         # 统计信息
-        self.stats_label = QLabel("加载中...")
-        self.stats_label.setStyleSheet("""
-            QLabel {
-                padding: 5px;
-                font-size: 11px;
-                color: rgba(180, 190, 200, 255);
-            }
-        """)
-        main_layout.addWidget(self.stats_label)
+        # self.stats_label = QLabel("加载中...")
+        # self.stats_label.setStyleSheet("""
+        #     QLabel {
+        #         padding: 5px;
+        #         font-size: 11px;
+        #         color: rgba(180, 190, 200, 255);
+        #     }
+        # """)
+        # main_layout.addWidget(self.stats_label)
         
         # 结果显示区（滚动区域）
         self.scroll_area = QScrollArea()
@@ -407,7 +423,7 @@ class SearchToolWindow(QMainWindow):
     def _update_stats(self):
         """更新统计信息"""
         loaded_count = min(self.current_offset + self.page_size, self.total_count)
-        self.stats_label.setText(f"共 {self.total_count} 个工具，已加载 {loaded_count} 个")
+        # self.stats_label.setText(f"共 {self.total_count} 个工具，已加载 {loaded_count} 个")
     
     def _on_tool_clicked(self, btn):
         """工具按钮点击"""

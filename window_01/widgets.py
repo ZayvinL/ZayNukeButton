@@ -26,7 +26,7 @@ class ToolButton(QWidget):
     def _setup_ui(self):
         # 主布局
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(1, 1, 1, 1)
         layout.setSpacing(0)
         
         # 文字标签（支持自动换行）
