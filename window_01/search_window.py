@@ -99,45 +99,9 @@ class SearchToolWindow(QMainWindow):
         main_layout.setContentsMargins(10, 1, 10, 10)
         main_layout.setSpacing(5)
         
-        # 标题栏
-        title_bar = QWidget()
-        title_layout = QHBoxLayout(title_bar)
-        title_layout.setContentsMargins(10, 5, 10, 5)
-        
-        title_label = QLabel(" 工具搜索")
-        title_label.setVisible(False)
-        title_label.setStyleSheet("""
-            QLabel {
-                color: rgba(220, 230, 240, 255);
-                font-size: 14px;
-                font-weight: bold;
-            }
-        """)
-        title_layout.addWidget(title_label)
-        title_layout.addStretch()
-        
-        close_btn = QPushButton("×")
-        close_btn.setFixedSize(25, 25)
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(200, 60, 60, 180);
-                color: white;
-                border: none;
-                border-radius: 3px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: rgba(220, 80, 80, 220);
-            }
-        """)
-        close_btn.clicked.connect(self.hide)
-        title_layout.addWidget(close_btn)
-        
-        main_layout.addWidget(title_bar)
-        
-        # 搜索框
+        # 搜索框 + 关闭按钮（横向布局）
         search_layout = QHBoxLayout()
+        search_layout.setSpacing(5)
         
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("搜索工具... (C=:类, L=:标签, P=:路径, N=:名称)")
@@ -156,6 +120,25 @@ class SearchToolWindow(QMainWindow):
         """)
         self.search_input.textChanged.connect(self._on_search_changed)
         search_layout.addWidget(self.search_input)
+        
+        # 关闭按钮 - 放在搜索框右侧
+        close_btn = QPushButton("×")
+        close_btn.setFixedSize(30, 30)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(200, 60, 60, 180);
+                color: white;
+                border: none;
+                border-radius: 3px;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: rgba(220, 80, 80, 220);
+            }
+        """)
+        close_btn.clicked.connect(self.hide)
+        search_layout.addWidget(close_btn)
         
         main_layout.addLayout(search_layout)
         
@@ -178,7 +161,7 @@ class SearchToolWindow(QMainWindow):
         
         content_hlayout.addWidget(self.grid_container)
         
-        # 右侧：自定义滑块（替代滚动条）
+        # 右侧：自定义滑块（替代滚动条）- 加宽到 18px
         self.slider = QSlider(Qt.Vertical)
         self.slider.setMinimum(0)
         self.slider.setMaximum(0)  # 初始范围
@@ -195,18 +178,18 @@ class SearchToolWindow(QMainWindow):
                 background-color: rgba(50, 60, 70, 100);
                 border: none;
                 border-radius: 5px;
-                width: 10px;
+                width: 28px;
             }
             QSlider::groove:vertical {
                 background: rgba(50, 60, 70, 150);
-                width: 10px;
+                width: 18px;
                 border-radius: 5px;
             }
             QSlider::handle:vertical {
                 background: rgba(100, 150, 200, 180);
                 height: 30px;
                 border-radius: 5px;
-                margin: 0px -2px;
+                margin: 0px -1px;
             }
             QSlider::handle:vertical:hover {
                 background: rgba(120, 170, 220, 220);
@@ -223,14 +206,15 @@ class SearchToolWindow(QMainWindow):
         
         central_widget.setStyleSheet("""
             QWidget {
-                background-color: rgba(40, 50, 60, 230);
+                background-color: rgba(40, 50, 60, 23
+0);
                 border-radius: 5px;
             }
         """)
     
     def eventFilter(self, obj, event):
         """事件过滤器 - 处理滚轮和拖拽事件"""
-        # 处理滚轮事件
+        # 处理滚轮事件（在按钮区域和滑块上都支持）
         if event.type() == QEvent.Wheel:
             if obj == self.grid_container or obj == self.slider or obj in self.tool_buttons:
                 delta = event.angleDelta().y()
@@ -240,8 +224,8 @@ class SearchToolWindow(QMainWindow):
                     self.slider.setValue(min(self.slider.maximum(), self.slider.value() + 1))
                 return True
         
-        # 处理鼠标拖拽事件
-        if obj == self.centralWidget() or obj in [self.grid_container, self.slider]:
+        # 处理鼠标拖拽事件（只处理窗口整体，不处理按钮区域和滑块）
+        if obj == self.centralWidget():
             if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
                 self.dragging = True
                 self.offset = event.globalPos() - self.frameGeometry().topLeft()
