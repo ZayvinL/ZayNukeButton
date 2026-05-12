@@ -364,13 +364,14 @@ class SearchToolWindow(QMainWindow):
     
     def __init__(self, toolbox_path, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("🔧 工具搜索")
-        self.setGeometry(200, 200, 500, 600)
+        self.setWindowTitle(" 工具搜索")
+        self.setGeometry(200, 200, 500, 450)  # 减小高度，确保初始就显示滚动条
+        self.setMinimumSize(400, 350)  # 最小高度
+        self.setMaximumSize(800, 800)
         
         self.toolbox_path = toolbox_path
-        self.page_size = 10  # 每页显示数量（可配置）
+        self.page_size = 10
         
-        # 初始化组件
         try:
             db_path = _get_user_db_path()
             self.db_query = FastDBQuery(db_path)
@@ -381,23 +382,22 @@ class SearchToolWindow(QMainWindow):
         self.icon_cache = IconCache(toolbox_path)
         self.smart_cache = SmartCache(max_size=100)
         
-        # 窗口设置
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
-        self.setAttribute(Qt.WA_NoSystemBackground)
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        # 窗口设置 - 保留边框以支持滚动条
+        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Tool)
+        # 不使用 FramelessWindowHint，保留系统边框和滚动条
         
-        # 状态变量
+        self.setAttribute(Qt.WA_NoSystemBackground, False)
+        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        
         self.dragging = False
         self.offset = None
         self.current_search_params = {}
         self.current_offset = 0
         self.total_count = 0
         
-        # UI
         self._setup_ui()
         self.installEventFilter(self)
         
-        # 延迟加载初始数据
         QTimer.singleShot(100, self._load_initial_data)
     
     def _setup_ui(self):
@@ -478,18 +478,42 @@ class SearchToolWindow(QMainWindow):
         """)
         main_layout.addWidget(self.stats_label)
         
-        # 结果显示区（虚拟列表）
+        # 结果显示区（滚动区域）
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setFrameShape(QScrollArea.NoFrame)
+        self.scroll_area.setFrameShape(QScrollArea.StyledPanel)
+        self.scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: 1px solid rgba(80, 100, 120, 100);
+                border-radius: 3px;
+                background-color: rgba(35, 45, 55, 150);
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: rgba(50, 60, 70, 200);
+                width: 10px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(100, 120, 140, 220);
+                min-height: 20px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(120, 140, 160, 240);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
         
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setContentsMargins(5, 5, 5, 5)
         self.content_layout.setSpacing(3)
-        self.content_layout.addStretch()
+        # 移除 addStretch()，让内容可以正确滚动
         
         self.scroll_area.setWidget(self.content_widget)
         main_layout.addWidget(self.scroll_area)
@@ -559,11 +583,18 @@ class SearchToolWindow(QMainWindow):
         search_params = self._parse_search_text(search_text)
         cache_key = self._search_params_to_key(search_params)
         
+        print(f"\n{'='*60}")
+        print(f"[搜索调试]")
+        print(f"  输入文本: '{search_text}'")
+        print(f"  解析参数: {search_params}")
+        print(f"  缓存键: {cache_key}")
+        
         self.current_search_params = search_params
         
         # 检查缓存
         cached_data = self.smart_cache.get(cache_key)
         if cached_data:
+            print(f"  [缓存命中] 总数: {cached_data['total_count']}, 工具数: {len(cached_data['tools'])}")
             self.total_count = cached_data['total_count']
             tools = cached_data['tools']
             self._display_tools(tools)
@@ -571,13 +602,17 @@ class SearchToolWindow(QMainWindow):
             return
         
         # 从数据库查询
+        print(f"  [数据库查询] 开始查询...")
         tools = self.db_query.search_tools(
             search_params,
             limit=self.page_size,
             offset=self.current_offset
         )
         
+        print(f"  [数据库查询] 找到 {len(tools)} 个工具")
+        
         self.total_count = self.db_query.get_total_count(search_params)
+        print(f"  [数据库查询] 总数: {self.total_count}")
         
         # 缓存结果
         self.smart_cache.set(cache_key, {
@@ -587,6 +622,7 @@ class SearchToolWindow(QMainWindow):
         
         self._display_tools(tools)
         self._update_stats()
+        print(f"{'='*60}\n")
     
     def _display_tools(self, tools):
         """显示工具列表"""
