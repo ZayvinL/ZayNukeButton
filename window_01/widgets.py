@@ -29,21 +29,6 @@ class ToolButton(QWidget):
         layout.setContentsMargins(1, 1, 1, 1)
         layout.setSpacing(0)
         
-        # 数字标记（临时调试用）
-        if hasattr(self, 'button_index'):
-            self.index_label = QLabel(str(self.button_index))
-            self.index_label.setAlignment(Qt.AlignCenter)
-            self.index_label.setStyleSheet("""
-                QLabel {
-                    color: rgba(255, 100, 100, 255);
-                    font-size: 10px;
-                    font-weight: bold;
-                    background-color: transparent;
-                    padding: 0px;
-                }
-            """)
-            layout.addWidget(self.index_label)
-        
         # 文字标签（支持自动换行）
         name = self.tool_data['tname']
         if '.' in name:
@@ -100,7 +85,7 @@ class ToolButton(QWidget):
     def _update_style(self):
         """更新样式"""
         if self._is_hovered:
-            bg_color = "rgba(170, 90, 110, 255)"
+            bg_color = "rgba(50, 60, 70, 255)"
             border_color = "rgba(100, 130, 160, 250)"
             text_color = "rgba(255, 200, 100, 255)"
         else:
@@ -117,34 +102,13 @@ class ToolButton(QWidget):
             QLabel {{
                 color: {text_color};
                 font-size: 11px;
-                background-color: transparent;
+                background-color: {bg_color};
             }}
         """)
     
     def update_content(self, tool_data):
         """更新按钮内容（虚拟列表专用，不重建布局）"""
         self.tool_data = tool_data
-        
-        # 更新或创建数字标记（临时调试用）
-        if hasattr(self, 'button_index'):
-            if not hasattr(self, 'index_label'):
-                # 创建索引标签
-                self.index_label = QLabel(str(self.button_index))
-                self.index_label.setAlignment(Qt.AlignCenter)
-                self.index_label.setStyleSheet("""
-                    QLabel {
-                        color: rgba(255, 100, 100, 255);
-                        font-size: 10px;
-                        font-weight: bold;
-                        background-color: transparent;
-                        padding: 0px;
-                    }
-                """)
-                # 插入到布局的第一个位置
-                self.layout().insertWidget(0, self.index_label)
-            else:
-                # 更新索引标签文本
-                self.index_label.setText(str(self.button_index))
         
         # 更新文字
         name = tool_data['tname']
@@ -180,6 +144,9 @@ class ToolButton(QWidget):
         
         tooltip_html = "<html><body><p>" + "</p><p>".join(tooltip_parts) + "</p></body></html>"
         self.setToolTip(tooltip_html)
+        
+        # 重新应用样式，确保悬停状态正确显示
+        self._update_style()
     
     def mousePressEvent(self, event):
         """鼠标按下事件"""

@@ -459,7 +459,7 @@ class SearchToolWindow(QMainWindow):
         # 滑块在底部（value=max）→ 显示工具 15-29
         self.start_index = value * self.tools_per_row
         
-        print(f"[滑块调试] value={value}, start_index={self.start_index}")
+        # print(f"[滑块调试] value={value}, start_index={self.start_index}")
         
         # 更新按钮内容
         self._update_visible_buttons()
@@ -538,10 +538,10 @@ class SearchToolWindow(QMainWindow):
         
         print(f"[执行工具] {tool_data['tname']}")
         print(f"   工具路径: {tool_data['tpath']}")
-        print(f"   图标路径: {tool_data['tpng']}")
+        # print(f"   图标路径: {tool_data['tpng']}")
         if tool_data['tpng']:
             print(f"   图标完整路径: {os.path.join(self.toolbox_path, tool_data['tpng'])}")
-            print(f"   图标存在: {os.path.exists(os.path.join(self.toolbox_path, tool_data['tpng']))}")
+            # print(f"   图标存在: {os.path.exists(os.path.join(self.toolbox_path, tool_data['tpng']))}")
         else:
             print(f"   无图标")
         
