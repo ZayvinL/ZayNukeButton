@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 """搜索型工具窗口主类"""
 
+import os
 import json
 
 from PySide6.QtCore import Qt, QTimer, QEvent
@@ -11,7 +12,7 @@ from PySide6.QtWidgets import (
     QLabel, QMessageBox
 )
 
-from window_01.config import _get_user_db_path
+from window_01.config import _get_user_db_path, _get_toolbox_path
 from window_01.db import FastDBQuery, IconCache, SmartCache
 from window_01.widgets import ToolButton
 
@@ -294,13 +295,17 @@ class SearchToolWindow(QMainWindow):
         col = 0
         
         for tool_data in tools:
-            tool_btn = ToolButton(tool_data)
+            # 创建数据副本，避免修改原始数据
+            tool_copy = dict(tool_data)
+            
+            # 拼接图标的完整路径
+            if tool_copy['tpng']:
+                original_path = tool_copy['tpng']
+                tool_copy['tpng'] = os.path.join(self.toolbox_path, tool_copy['tpng'])
+            
+            tool_btn = ToolButton(tool_copy)
             tool_btn.setProperty('button_width', self.button_width)
             tool_btn.setProperty('button_height', self.button_height)
-            
-            if tool_data['tpng']:
-                icon = self.icon_cache.get_icon(tool_data['tpng'])
-                tool_btn.set_icon(icon)
             
             tool_btn.clicked.connect(lambda checked, btn=tool_btn: self._on_tool_clicked(btn))
             
@@ -390,10 +395,6 @@ class SearchToolWindow(QMainWindow):
             for tool_data in tools:
                 tool_btn = ToolButton(tool_data)
                 
-                if tool_data['tpng']:
-                    icon = self.icon_cache.get_icon(tool_data['tpng'])
-                    tool_btn.set_icon(icon)
-                
                 tool_btn.clicked.connect(lambda checked, btn=tool_btn: self._on_tool_clicked(btn))
                 
                 grid_layout.addWidget(tool_btn, row, col)
@@ -412,9 +413,16 @@ class SearchToolWindow(QMainWindow):
         """工具按钮点击"""
         tool_data = btn.tool_data
         
-        # TODO: 在这里实现工具执行逻辑
         print(f"[执行工具] {tool_data['tname']}")
-        print(f"   路径: {tool_data['tpath']}")
+        print(f"   工具路径: {tool_data['tpath']}")
+        print(f"   图标路径: {tool_data['tpng']}")
+        if tool_data['tpng']:
+            print(f"   图标完整路径: {os.path.join(self.toolbox_path, tool_data['tpng'])}")
+            print(f"   图标存在: {os.path.exists(os.path.join(self.toolbox_path, tool_data['tpng']))}")
+        else:
+            print(f"   无图标")
+        
+        # TODO: 在这里实现工具执行逻辑
         
         # 执行后隐藏窗口
         self.hide()

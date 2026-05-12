@@ -33,4 +33,4 @@ def _get_user_db_path():
 
 def _get_toolbox_path():
     """获取工具箱根目录路径"""
-    return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tools')
+    return psp.tools_path_get()
