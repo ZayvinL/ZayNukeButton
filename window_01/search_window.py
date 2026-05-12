@@ -76,6 +76,7 @@ class SearchToolWindow(QMainWindow):
         
         self._setup_ui()
         self.installEventFilter(self)
+        self.centralWidget().installEventFilter(self)  # 给 centralWidget 也安装事件过滤器
         self._setup_shortcuts()
         
         QTimer.singleShot(100, self._load_initial_data)
@@ -223,20 +224,28 @@ class SearchToolWindow(QMainWindow):
         """)
     
     def eventFilter(self, obj, event):
-        """事件过滤器 - 处理滚轮事件控制滑块"""
+        """事件过滤器 - 处理滚轮和拖拽事件"""
+        # 处理滚轮事件
         if event.type() == QEvent.Wheel:
-            # 检查是否是 grid_container 或 slider
             if obj == self.grid_container or obj == self.slider or obj in self.tool_buttons:
-                # 处理滚轮事件
                 delta = event.angleDelta().y()
                 if delta > 0:
-                    # 向上滚动：滑块向上移动，显示更早的工具
                     self.slider.setValue(max(0, self.slider.value() - 1))
                 else:
-                    # 向下滚动：滑块向下移动，显示更晚的工具
                     self.slider.setValue(min(self.slider.maximum(), self.slider.value() + 1))
-                
-                # 阻止默认行为
+                return True
+        
+        # 处理鼠标拖拽事件
+        if obj == self.centralWidget() or obj in [self.grid_container, self.slider]:
+            if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+                self.dragging = True
+                self.offset = event.globalPos() - self.frameGeometry().topLeft()
+                return True
+            elif event.type() == QEvent.MouseMove and self.dragging:
+                self.move(event.globalPos() - self.offset)
+                return True
+            elif event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
+                self.dragging = False
                 return True
         
         return super().eventFilter(obj, event)
