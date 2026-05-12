@@ -24,11 +24,6 @@ class SearchToolWindow(QMainWindow):
     def __init__(self, toolbox_path, parent=None):
         super().__init__(parent)
         self.setWindowTitle(" 工具搜索")
-        # self.setGeometry(100, 100, 100, 100)
-        self.setMinimumSize(800, 350)
-        self.setMaximumSize(800, 450)
-        
-        
         
         self.toolbox_path = toolbox_path
         
@@ -40,8 +35,19 @@ class SearchToolWindow(QMainWindow):
         self.button_height = 80  # 按钮固定高度（可调整）
         self.grid_spacing = 1  # 按钮间距（可调整）
         self.grid_margins = 1 # 网格边距（可调整）
-        self.minwidth = self.button_width* 0.5 * self.tools_per_row
-        self.minHeight = self.button_height * 10
+        
+        # 计算窗口尺寸
+        # 窗口宽度：5列按钮 + 间距 + 边距
+        window_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing + 30
+        
+        # 窗口高度：标题栏(35) + 搜索框(35) + 按钮区域(显示3行) + 边距
+        # 窗口高度 < content_widget 高度，确保有滚动空间
+        visible_rows = 3  # 窗口内完整显示 3 行
+        button_area_height = visible_rows * self.button_height + (visible_rows + 1) * self.grid_spacing
+        window_height = 35 + 35 + button_area_height + 20  # 约 355 像素
+        
+        self.setMinimumSize(window_width, window_height)
+        self.setMaximumSize(window_width + 50, window_height + 20)  # 窗口高度固定
         
         try:
             db_path = _get_user_db_path()
@@ -162,26 +168,27 @@ class SearchToolWindow(QMainWindow):
         
         # 结果显示区（滚动区域）
         self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(False)
+        self.scroll_area.setWidgetResizable(False)  # 保持固定尺寸
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # 始终显示滚动条
         
-        # 给scroll_area设置背景色，让滚动区域可见
+        # 优化滚动条样式
         self.scroll_area.setStyleSheet("""
             QScrollArea {
                 background-color: rgba(40, 50, 60, 230);
-                border-radius: 5px;
+                border: 1px solid rgba(80, 100, 120, 150);
+                border-radius: 3px;
             }
             QScrollBar:vertical {
-                background-color: rgba(50, 60, 70, 150);
-                width: 8px;
+                background-color: rgba(50, 60, 70, 100);
+                width: 10px;
                 margin: 0px;
-                border-radius: 4px;
+                border-radius: 5px;
             }
             QScrollBar::handle:vertical {
-                background-color: rgba(100, 150, 200, 200);
-                border-radius: 4px;
-                min-height: 20px;
+                background-color: rgba(100, 150, 200, 180);
+                border-radius: 5px;
+                min-height: 30px;
             }
             QScrollBar::handle:vertical:hover {
                 background-color: rgba(120, 170, 220, 220);
@@ -199,14 +206,19 @@ class SearchToolWindow(QMainWindow):
         
         self.content_widget = QWidget()
         self.content_layout = QVBoxLayout(self.content_widget)
-        ccsize = 1
+        ccsize = 0
         self.content_layout.setContentsMargins(ccsize, ccsize, ccsize, ccsize)
         self.content_layout.setSpacing(ccsize)
         
-        # 设置最小宽度，确保水平方向能容纳 5 列按钮
+        # 设置最小宽度
         total_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing
         self.content_widget.setMinimumWidth(total_width)
-        self.content_widget.setMinimumHeight(500)
+        
+        # 关键：给 content_widget 设置固定高度，制造滚动空间
+        # 设置为 4 行高度（3 行工具 + 1 行空白），刚好够滚动加载
+        scroll_space_rows = 4  # 滚动空间：4 行（比初始工具多 1 行）
+        content_fixed_height = scroll_space_rows * self.button_height + (scroll_space_rows + 1) * self.grid_spacing
+        self.content_widget.setFixedHeight(content_fixed_height)
         
         self.scroll_area.setWidget(self.content_widget)
         main_layout.addWidget(self.scroll_area)
@@ -291,6 +303,8 @@ class SearchToolWindow(QMainWindow):
             tools = cached_data['tools']
             self._display_tools(tools)
             self._update_stats()
+            # 初始加载后更新高度
+            self._update_content_height()
             return
         
         # 从数据库查询
@@ -314,6 +328,8 @@ class SearchToolWindow(QMainWindow):
         
         self._display_tools(tools)
         self._update_stats()
+        # 初始加载后更新高度
+        self._update_content_height()
         print(f"{'='*60}\n")
     
     def _display_tools(self, tools):
@@ -330,10 +346,7 @@ class SearchToolWindow(QMainWindow):
                     padding: 20px;
                 }
             """)
-            self.content_layout.insertWidget(
-                self.content_layout.count() - 1,
-                empty_label
-            )
+            self.content_layout.addWidget(empty_label)
             return
         
         grid_widget = QWidget()
@@ -354,7 +367,7 @@ class SearchToolWindow(QMainWindow):
             grid_layout.setRowMinimumHeight(row, self.button_height)
             grid_layout.setRowStretch(row, 0)
         
-        # 计算容器固定尺寸
+        # 计算容器固定尺寸（只根据当前加载的工具数量）
         total_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing
         total_height = total_rows * self.button_height + (total_rows + 1) * self.grid_spacing
         grid_widget.setFixedSize(total_width, total_height)
@@ -380,25 +393,43 @@ class SearchToolWindow(QMainWindow):
                 col = 0
                 row += 1
         
-        self.content_layout.insertWidget(
-            self.content_layout.count() - 1,
-            grid_widget
-        )
+        # 插入 grid_widget 到顶部
+        self.content_layout.addWidget(grid_widget)
+        
+        # 关键：添加 stretch 填充底部空白，保持滚动范围
+        self.content_layout.addStretch()
     
     def _clear_results(self):
         """清空结果显示"""
-        for i in reversed(range(self.content_layout.count())):
-            widget = self.content_layout.itemAt(i).widget()
-            if widget and isinstance(widget, QWidget):
-                if widget.layout():
-                    widget.setParent(None)
+        # 清空 content_layout 中的所有 widget
+        while self.content_layout.count() > 0:
+            item = self.content_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
     
     def _on_scroll(self, value):
         """滚动事件"""
         scrollbar = self.scroll_area.verticalScrollBar()
         max_value = scrollbar.maximum()
-        if value >= max_value - 50 and self.current_offset + self.page_size < self.total_count:
+        
+        # 提前触发加载：距离底部 200 像素（约 2.5 行）时就加载
+        if value >= max_value - 200 and self.current_offset + self.page_size < self.total_count:
             self._load_more()
+        
+        # 关键：如果滚动到底部且已加载全部工具，更新 content_widget 高度
+        if value >= max_value and self.current_offset + self.page_size >= self.total_count:
+            self._update_content_height()
+    
+    def _update_content_height(self):
+        """根据数据库总工具数设置 content_widget 的固定高度"""
+        # 关键：根据数据库总工具数计算总行数
+        total_rows = (self.total_count + self.tools_per_row - 1) // self.tools_per_row
+        
+        # 计算总高度（所有工具的总行数）
+        total_height = total_rows * self.button_height + (total_rows + 1) * self.grid_spacing
+        
+        # 更新 content_widget 的固定高度（基于总工具数）
+        self.content_widget.setFixedHeight(total_height)
     
     def _load_more(self):
         """加载更多工具"""
@@ -474,6 +505,9 @@ class SearchToolWindow(QMainWindow):
             new_total_height = new_row_count * self.button_height + (new_row_count + 1) * self.grid_spacing
             total_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing
             grid_widget.setFixedSize(total_width, new_total_height)
+            
+            # 关键：更新 content_widget 的固定高度，让滚动条反映全部工具
+            self._update_content_height()
     
     def _update_stats(self):
         """更新统计信息"""
