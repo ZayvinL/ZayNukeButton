@@ -244,24 +244,24 @@ class SearchToolWindow(QMainWindow):
         
         self.slider.setStyleSheet(f"""
             QSlider {{
-                background-color: rgba(50, 60, 70, {self.button_bg_alpha});
+                background-color: rgba(50, 60, 70, {self.search_bg_alpha});
                 border: none;
                 border-radius: 5px;
                 width: 18px;
             }}
             QSlider::groove:vertical {{
-                background: rgba(50, 60, 70, 150);
+                background: rgba(50, 60, 70, {self.search_bg_alpha});
                 width: 18px;
                 border-radius: 5px;
             }}
             QSlider::handle:vertical {{
-                background: rgba(100, 150, 200, 180);
+                background: rgba(100, 150, 200, {int(self.search_bg_alpha * 1.5)});
                 height: 30px;
                 border-radius: 5px;
                 margin: 0px -1px;
             }}
             QSlider::handle:vertical:hover {{
-                background: rgba(120, 170, 220, 220);
+                background: rgba(120, 170, 220, {min(255, int(self.search_bg_alpha * 1.8))});
             }}
             QSlider::add-page:vertical, QSlider::sub-page:vertical {{
                 background: transparent;
