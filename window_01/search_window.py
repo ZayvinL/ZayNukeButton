@@ -167,6 +167,9 @@ class SearchToolWindow(QMainWindow):
         # 预创建按钮槽位
         self._create_button_slots()
         
+        # 给 grid_container 安装事件过滤器，支持滚轮控制滑块
+        self.grid_container.installEventFilter(self)
+        
         content_hlayout.addWidget(self.grid_container)
         
         # 右侧：自定义滑块（替代滚动条）
@@ -220,19 +223,21 @@ class SearchToolWindow(QMainWindow):
         """)
     
     def eventFilter(self, obj, event):
-        """事件过滤器 - 处理滑块滚轮事件"""
-        if obj == self.slider and event.type() == QEvent.Wheel:
-            # 处理滚轮事件
-            delta = event.angleDelta().y()
-            if delta > 0:
-                # 向上滚动：滑块向上移动，显示更早的工具
-                self.slider.setValue(max(0, self.slider.value() - 1))
-            else:
-                # 向下滚动：滑块向下移动，显示更晚的工具
-                self.slider.setValue(min(self.slider.maximum(), self.slider.value() + 1))
-            
-            # 阻止默认行为
-            return True
+        """事件过滤器 - 处理滚轮事件控制滑块"""
+        if event.type() == QEvent.Wheel:
+            # 检查是否是 grid_container 或 slider
+            if obj == self.grid_container or obj == self.slider or obj in self.tool_buttons:
+                # 处理滚轮事件
+                delta = event.angleDelta().y()
+                if delta > 0:
+                    # 向上滚动：滑块向上移动，显示更早的工具
+                    self.slider.setValue(max(0, self.slider.value() - 1))
+                else:
+                    # 向下滚动：滑块向下移动，显示更晚的工具
+                    self.slider.setValue(min(self.slider.maximum(), self.slider.value() + 1))
+                
+                # 阻止默认行为
+                return True
         
         return super().eventFilter(obj, event)
     
