@@ -37,7 +37,7 @@ class SearchToolWindow(QMainWindow):
         self.grid_margins = 1 # 网格边距（可调整）
         
         # 透明度参数（0-255，0=完全透明，255=完全不透明）
-        self.button_bg_alpha = 150  # 按钮区域背景透明度
+        self.button_bg_alpha = 50  # 按钮区域背景透明度
         self.search_bg_alpha = 50  # 搜索框背景透明度（与按钮区域一致）
         
         # 虚拟列表参数

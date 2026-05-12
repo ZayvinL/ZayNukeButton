@@ -100,11 +100,11 @@ class ToolButton(QWidget):
     def _update_style(self):
         """更新样式"""
         if self._is_hovered:
-            bg_color = "rgba(70, 90, 110, 220)"
-            border_color = "rgba(100, 130, 160, 200)"
+            bg_color = "rgba(170, 90, 110, 255)"
+            border_color = "rgba(100, 130, 160, 250)"
             text_color = "rgba(255, 200, 100, 255)"
         else:
-            bg_color = "rgba(50, 60, 70, 200)"
+            bg_color = "rgba(50, 60, 70, 100)"
             border_color = "rgba(80, 100, 120, 150)"
             text_color = "rgba(200, 210, 220, 255)"
         
