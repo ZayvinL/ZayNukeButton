@@ -69,6 +69,11 @@ class SearchToolWindow(QMainWindow):
         self.current_offset = 0
         self.total_count = 0
         
+        # 搜索 debounce 定时器
+        self.search_timer = QTimer()
+        self.search_timer.setSingleShot(True)
+        self.search_timer.timeout.connect(self._perform_search)
+        
         # 虚拟列表数据
         self.all_tools = []  # 所有工具数据（从数据库加载）
         self.tool_buttons = []  # 固定的按钮对象列表
@@ -293,10 +298,12 @@ class SearchToolWindow(QMainWindow):
         self._perform_search()
     
     def _on_search_changed(self, text):
-        """搜索框内容变化"""
-        self.current_offset = 0
-        self._clear_results()
-        self._perform_search()
+        """搜索框内容变化 - 使用 debounce 避免频繁搜索"""
+        # 停止之前的定时器
+        self.search_timer.stop()
+        
+        # 300ms 后执行搜索
+        self.search_timer.start(300)
     
     def _perform_search(self):
         """执行搜索"""
@@ -355,102 +362,19 @@ class SearchToolWindow(QMainWindow):
         self._update_stats()
         print(f"{'='*60}\n")
     
-    def _display_tools(self, tools):
-        """显示工具列表"""
-        self._clear_results()
-        
-        if not tools:
-            empty_label = QLabel("没有找到工具")
-            empty_label.setAlignment(Qt.AlignCenter)
-            empty_label.setStyleSheet("""
-                QLabel {
-                    color: rgba(150, 160, 170, 200);
-                    font-size: 12px;
-                    padding: 20px;
-                }
-            """)
-            self.content_layout.addWidget(empty_label)
-            return
-        
-        grid_widget = QWidget()
-        grid_layout = QGridLayout(grid_widget)
-        grid_layout.setContentsMargins(self.grid_margins, self.grid_margins, self.grid_margins, self.grid_spacing)
-        grid_layout.setSpacing(self.grid_spacing)
-        
-        # 计算实际需要的行数
-        total_rows = (len(tools) + self.tools_per_row - 1) // self.tools_per_row
-        
-        # 设置每列固定宽度，禁止拉伸
-        for col in range(self.tools_per_row):
-            grid_layout.setColumnMinimumWidth(col, self.button_width)
-            grid_layout.setColumnStretch(col, 0)
-        
-        # 设置每行固定高度，禁止拉伸
-        for row in range(total_rows):
-            grid_layout.setRowMinimumHeight(row, self.button_height)
-            grid_layout.setRowStretch(row, 0)
-        
-        # 计算容器固定尺寸（只根据当前加载的工具数量）
-        total_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing
-        total_height = total_rows * self.button_height + (total_rows + 1) * self.grid_spacing
-        grid_widget.setFixedSize(total_width, total_height)
-        
-        row = 0
-        col = 0
-        
-        for tool_data in tools:
-            tool_copy = dict(tool_data)
-            
-            if tool_copy['tpng']:
-                tool_copy['tpng'] = os.path.join(self.toolbox_path, tool_copy['tpng'])
-            
-            tool_btn = ToolButton(tool_copy)
-            tool_btn.setFixedSize(self.button_width, self.button_height)
-            
-            tool_btn.clicked.connect(lambda checked, btn=tool_btn: self._on_tool_clicked(btn))
-            
-            grid_layout.addWidget(tool_btn, row, col)
-            
-            col += 1
-            if col >= self.tools_per_row:
-                col = 0
-                row += 1
-        
-        # 插入 grid_widget 到顶部
-        self.content_layout.addWidget(grid_widget)
-        
-        # 关键：添加 stretch 填充底部空白，保持滚动范围
-        self.content_layout.addStretch()
-    
     def _clear_results(self):
         """清空结果显示"""
         self.all_tools.clear()
         self.total_count = 0
         self.start_index = 0
-        self._update_content_height()
-        self._update_visible_buttons()
-    
-    def _update_content_height(self):
-        """设置滚动条范围（不改变 content_widget 高度）"""
-        # content_widget 高度固定为可见区域（3行）
-        visible_height = self.visible_rows * self.button_height + (self.visible_rows + 1) * self.grid_spacing
-        self.content_widget.setFixedHeight(visible_height)
         
-        if self.total_count == 0:
-            # 没有工具时，设置滚动条范围很小
-            scrollbar = self.scroll_area.verticalScrollBar()
-            scrollbar.setRange(0, 1)
-            return
+        # 清空所有按钮
+        for btn in self.tool_buttons:
+            btn.setVisible(False)
         
-        # 计算总行数
-        total_rows = (self.total_count + self.tools_per_row - 1) // self.tools_per_row
-        visible_rows = self.visible_rows
-        scrollable_rows = max(0, total_rows - visible_rows)
-        
-        # 手动设置滚动条的范围（模拟总高度）
-        scrollbar = self.scroll_area.verticalScrollBar()
-        max_range = scrollable_rows * self.button_height
-        scrollbar.setRange(0, max_range)
+        # 重置滑块
+        self.slider.setValue(0)
+        self.slider.setMaximum(0)
     
     def _update_slider_range(self):
         """根据数据库总工具数设置滑块范围"""
