@@ -21,11 +21,12 @@ from window_01.widgets import ToolButton
 class SearchToolWindow(QMainWindow):
     """搜索型工具窗口"""
     
-    def __init__(self, toolbox_path, parent=None):
+    def __init__(self, toolbox_path, parent=None, initial_search_text=""):
         super().__init__(parent)
         self.setWindowTitle(" 工具搜索")
         
         self.toolbox_path = toolbox_path
+        self.initial_search_text = initial_search_text  # 保存初始搜索文本
         
         # 布局参数配置（可调整）
         self.tools_per_row = 5  # 每行显示数量
@@ -88,7 +89,13 @@ class SearchToolWindow(QMainWindow):
         self._setup_shortcuts()
         
         QTimer.singleShot(100, self._load_initial_data)
-
+        QTimer.singleShot(200, self._apply_initial_search)
+    
+    def _apply_initial_search(self):
+        """应用初始搜索文本"""
+        if self.initial_search_text:
+            self.search_input.setText(self.initial_search_text)
+    
     def _setup_shortcuts(self):
         """设置快捷键"""
         esc_shortcut = QShortcut(QKeySequence("Esc"), self)

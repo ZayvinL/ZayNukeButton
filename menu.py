@@ -2,16 +2,14 @@
 import nuke
 import os
 import codecs
+import window_panel 
+ 
+# ---------------------------------------------------------
+bar = nuke.menu('Nodes')
+toolbar = bar.addMenu("ZayvinTools")
+toolbar.addCommand('Button', window_panel.run_show,"A",shortcutContext=2)
 
-# try:
-    # ---------------------------------
-import hotkeysetup as hkst
-# ---------------------------------
-hkst.menusetup() # menu set here
-# except:
-    # pass
-    
-    
+
 # ---------------------------------------------------------
 
 
