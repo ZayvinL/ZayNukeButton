@@ -36,6 +36,10 @@ class SearchToolWindow(QMainWindow):
         self.grid_spacing = 1  # 按钮间距（可调整）
         self.grid_margins = 1 # 网格边距（可调整）
         
+        # 透明度参数（0-255，0=完全透明，255=完全不透明）
+        self.button_bg_alpha = 50  # 按钮区域背景透明度
+        self.search_bg_alpha = 230  # 搜索框背景透明度
+        
         # 虚拟列表参数
         self.visible_rows = 3  # 可见行数
         self.buffer_rows = 2  # 缓冲行数（上下各留）
@@ -59,8 +63,8 @@ class SearchToolWindow(QMainWindow):
         self.icon_cache = IconCache(toolbox_path)
         self.smart_cache = SmartCache(max_size=100)
         
+        # 全透明窗口
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WA_NoSystemBackground)
         self.setAttribute(Qt.WA_TranslucentBackground)
         
         self.dragging = False
@@ -81,7 +85,6 @@ class SearchToolWindow(QMainWindow):
         
         self._setup_ui()
         self.installEventFilter(self)
-        self.centralWidget().installEventFilter(self)  # 给 centralWidget 也安装事件过滤器
         self._setup_shortcuts()
         
         QTimer.singleShot(100, self._load_initial_data)
@@ -95,63 +98,128 @@ class SearchToolWindow(QMainWindow):
         """设置UI"""
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(10, 1, 10, 10)
-        main_layout.setSpacing(5)
         
-        # 搜索框 + 关闭按钮（横向布局）
+        # 主布局：使用 QGridLayout 来放置四个边框标签和中央内容
+        main_layout = QGridLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # 创建四个拖拽标签（50% 透明度）
+        drag_alpha = 128  # 50% 透明度
+        
+        # 上边框
+        self.drag_top = QLabel()
+        self.drag_top.setMinimumHeight(10)
+        self.drag_top.setStyleSheet(f"""
+            QLabel {{
+                background-color: rgba(50, 60, 70, {drag_alpha});
+            }}
+        """)
+        self.drag_top.installEventFilter(self)
+        
+        # 下边框
+        self.drag_bottom = QLabel()
+        self.drag_bottom.setMinimumHeight(10)
+        self.drag_bottom.setStyleSheet(f"""
+            QLabel {{
+                background-color: rgba(50, 60, 70, {drag_alpha});
+            }}
+        """)
+        self.drag_bottom.installEventFilter(self)
+        
+        # 左边框
+        self.drag_left = QLabel()
+        self.drag_left.setMinimumWidth(10)
+        self.drag_left.setStyleSheet(f"""
+            QLabel {{
+                background-color: rgba(50, 60, 70, {drag_alpha});
+            }}
+        """)
+        self.drag_left.installEventFilter(self)
+        
+        # 右边框
+        self.drag_right = QLabel()
+        self.drag_right.setMinimumWidth(10)
+        self.drag_right.setStyleSheet(f"""
+            QLabel {{
+                background-color: rgba(50, 60, 70, {drag_alpha});
+            }}
+        """)
+        self.drag_right.installEventFilter(self)
+        
+        # 将四个标签添加到网格布局的四个边
+        main_layout.addWidget(self.drag_top, 0, 0, 1, 3)    # 第 0 行，跨 3 列
+        main_layout.addWidget(self.drag_left, 1, 0, 1, 1)   # 第 1 行，第 0 列
+        main_layout.addWidget(self.drag_right, 1, 2, 1, 1)  # 第 1 行，第 2 列
+        main_layout.addWidget(self.drag_bottom, 2, 0, 1, 3) # 第 2 行，跨 3 列
+        
+        # 中央内容区域（第 1 行，第 1 列）
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(1, 1, 1, 1)
+        content_layout.setSpacing(1)
+        
+        # 搜索框 + 关闭按钮（横向布局）- 不透明背景
         search_layout = QHBoxLayout()
         search_layout.setSpacing(5)
         
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("搜索工具... (C=:类, L=:标签, P=:路径, N=:名称)")
-        self.search_input.setStyleSheet("""
-            QLineEdit {
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
                 padding: 8px 12px;
                 font-size: 12px;
-                background-color: rgba(50, 60, 70, 200);
+                background-color: rgba(50, 60, 70, {self.search_bg_alpha});
                 color: rgba(220, 230, 240, 255);
                 border: 1px solid rgba(80, 100, 120, 150);
                 border-radius: 3px;
-            }
-            QLineEdit:focus {
+            }}
+            QLineEdit:focus {{
                 border-color: rgba(100, 150, 200, 200);
-            }
+            }}
         """)
         self.search_input.textChanged.connect(self._on_search_changed)
         search_layout.addWidget(self.search_input)
         
-        # 关闭按钮 - 放在搜索框右侧
+        # 关闭按钮
         close_btn = QPushButton("×")
         close_btn.setFixedSize(30, 30)
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(200, 60, 60, 180);
+        close_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: rgba(200, 60, 60, {self.search_bg_alpha});
                 color: white;
                 border: none;
                 border-radius: 3px;
                 font-size: 18px;
                 font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: rgba(220, 80, 80, 220);
-            }
+            }}
+            QPushButton:hover {{
+                background-color: rgba(220, 80, 80, {self.search_bg_alpha});
+            }}
         """)
         close_btn.clicked.connect(self.hide)
         search_layout.addWidget(close_btn)
         
-        main_layout.addLayout(search_layout)
+        content_layout.addLayout(search_layout)
         
         # 创建主内容区域（横向布局：按钮区 + 滑块）
         content_hlayout = QHBoxLayout()
         content_hlayout.setContentsMargins(0, 0, 0, 0)
         content_hlayout.setSpacing(5)
         
-        # 左侧：按钮网格区域
+        # 左侧：按钮网格区域 - 半透明背景
         self.grid_container = QWidget()
         self.grid_layout = QGridLayout(self.grid_container)
         self.grid_layout.setContentsMargins(self.grid_margins, self.grid_margins, self.grid_margins, self.grid_margins)
         self.grid_layout.setSpacing(self.grid_spacing)
+        
+        # 设置按钮区域背景透明度
+        self.grid_container.setStyleSheet(f"""
+            QWidget {{
+                background-color: rgba(50, 60, 70, {self.button_bg_alpha});
+                border-radius: 5px;
+            }}
+        """)
         
         # 预创建按钮槽位
         self._create_button_slots()
@@ -173,42 +241,44 @@ class SearchToolWindow(QMainWindow):
         # 安装事件过滤器，支持鼠标滚轮
         self.slider.installEventFilter(self)
         
-        self.slider.setStyleSheet("""
-            QSlider {
-                background-color: rgba(50, 60, 70, 100);
+        self.slider.setStyleSheet(f"""
+            QSlider {{
+                background-color: rgba(50, 60, 70, {self.button_bg_alpha});
                 border: none;
                 border-radius: 5px;
-                width: 28px;
-            }
-            QSlider::groove:vertical {
+                width: 18px;
+            }}
+            QSlider::groove:vertical {{
                 background: rgba(50, 60, 70, 150);
                 width: 18px;
                 border-radius: 5px;
-            }
-            QSlider::handle:vertical {
+            }}
+            QSlider::handle:vertical {{
                 background: rgba(100, 150, 200, 180);
                 height: 30px;
                 border-radius: 5px;
                 margin: 0px -1px;
-            }
-            QSlider::handle:vertical:hover {
+            }}
+            QSlider::handle:vertical:hover {{
                 background: rgba(120, 170, 220, 220);
-            }
-            QSlider::add-page:vertical, QSlider::sub-page:vertical {
+            }}
+            QSlider::add-page:vertical, QSlider::sub-page:vertical {{
                 background: transparent;
-            }
+            }}
         """)
         self.slider.valueChanged.connect(self._on_slider_changed)
         
         content_hlayout.addWidget(self.slider)
         
-        main_layout.addLayout(content_hlayout)
+        content_layout.addLayout(content_hlayout)
         
+        # 将中央内容区域添加到网格布局的中心位置（第 1 行，第 1 列）
+        main_layout.addWidget(content_widget, 1, 1)
+        
+        # central_widget 全透明
         central_widget.setStyleSheet("""
             QWidget {
-                background-color: rgba(40, 50, 60, 23
-0);
-                border-radius: 5px;
+                background-color: transparent;
             }
         """)
     
@@ -224,8 +294,8 @@ class SearchToolWindow(QMainWindow):
                     self.slider.setValue(min(self.slider.maximum(), self.slider.value() + 1))
                 return True
         
-        # 处理鼠标拖拽事件（只处理窗口整体，不处理按钮区域和滑块）
-        if obj == self.centralWidget():
+        # 处理鼠标拖拽事件（只在四个边框标签上拖拽）
+        if obj in [self.drag_top, self.drag_bottom, self.drag_left, self.drag_right]:
             if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
                 self.dragging = True
                 self.offset = event.globalPos() - self.frameGeometry().topLeft()
