@@ -4,8 +4,10 @@
 
 import os
 import json
+import sys
+import nuke
 
-from PySide6.QtCore import Qt, QTimer, QEvent
+from PySide6.QtCore import Qt, QTimer, QEvent, Signal
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QGridLayout, QScrollArea, QLineEdit, QPushButton, 
@@ -16,17 +18,22 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from window_01.config import _get_user_db_path, _get_toolbox_path
 from window_01.db import FastDBQuery, IconCache, SmartCache
 from window_01.widgets import ToolButton
-
+import nukendoesget
+# ShowMyFun = True
 
 class SearchToolWindow(QMainWindow):
     """搜索型工具窗口"""
+    
+    # 定义窗口隐藏信号
+    window_hidden = Signal()
     
     def __init__(self, toolbox_path, parent=None, initial_search_text=""):
         super().__init__(parent)
         self.setWindowTitle(" 工具搜索")
         
         self.toolbox_path = toolbox_path
-        self.initial_search_text = initial_search_text  # 保存初始搜索文本
+        self.initial_search_text = initial_search_text
+        self.is_visible = False  # 使用实例属性存储状态
         
         # 布局参数配置（可调整）
         self.tools_per_row = 5  # 每行显示数量
@@ -92,14 +99,33 @@ class SearchToolWindow(QMainWindow):
         QTimer.singleShot(200, self._apply_initial_search)
     
     def _apply_initial_search(self):
-        """应用初始搜索文本"""
-        if self.initial_search_text:
-            self.search_input.setText(self.initial_search_text)
+        """应用初始搜索文本（已合并到 _load_initial_data，此方法保留但不执行）"""
+        pass
     
     def _setup_shortcuts(self):
         """设置快捷键"""
         esc_shortcut = QShortcut(QKeySequence("Esc"), self)
-        esc_shortcut.activated.connect(self.hide)
+        esc_shortcut2 = QShortcut(QKeySequence("A"), self)
+        esc_shortcut.activated.connect(self.refresh_status)
+        esc_shortcut2.activated.connect(self.refresh_status)
+    
+    def showEvent(self, event):
+        """窗口显示时设置状态"""
+        self.is_visible = True
+        print(f"窗口显示，is_visible={self.is_visible}")
+        super().showEvent(event)
+    
+    def hideEvent(self, event):
+        """窗口隐藏时更新状态并发送信号"""
+        self.is_visible = False
+        print(f"窗口隐藏，is_visible={self.is_visible}")
+        self.window_hidden.emit()
+        super().hideEvent(event)
+    
+    def refresh_status(self):
+        """刷新状态"""
+        self.hide()
+        print(f"refresh_status 调用，is_visible={self.is_visible}")
     
     def _setup_ui(self):
         """设置UI"""
@@ -205,7 +231,7 @@ class SearchToolWindow(QMainWindow):
                 background-color: rgba(220, 80, 80, {self.search_bg_alpha});
             }}
         """)
-        close_btn.clicked.connect(self.hide)
+        close_btn.clicked.connect(self.refresh_status)
         search_layout.addWidget(close_btn)
         
         content_layout.addLayout(search_layout)
@@ -352,11 +378,17 @@ class SearchToolWindow(QMainWindow):
         return json.dumps(search_params, sort_keys=True)
     
     def _load_initial_data(self):
-        """加载初始数据（默认显示所有工具）"""
-        # TODO: 这里可以根据其他数据生成默认搜索字符串
-        default_search = ""  # 空搜索，显示所有工具
+        """加载初始数据（优先使用传入的搜索文本）"""
+        # 设置焦点到滚动条（滑块）
+        # self.search_input.setFocus()
+        self.slider.setFocus()
         
-        self.search_input.setText(default_search)
+        # 如果有初始搜索文本，直接使用；否则显示所有工具
+        if self.initial_search_text:
+            self.search_input.setText(self.initial_search_text)
+        else:
+            self.search_input.setText("")
+        
         self._perform_search()
     
     def _on_search_changed(self, text):
@@ -373,11 +405,11 @@ class SearchToolWindow(QMainWindow):
         search_params = self._parse_search_text(search_text)
         cache_key = self._search_params_to_key(search_params)
         
-        print(f"\n{'='*60}")
-        print(f"[搜索调试]")
-        print(f"  输入文本: '{search_text}'")
-        print(f"  解析参数: {search_params}")
-        print(f"  缓存键: {cache_key}")
+        # print(f"\n{'='*60}")
+        # print(f"[搜索调试]")
+        # print(f"  输入文本: '{search_text}'")
+        # print(f"  解析参数: {search_params}")
+        # print(f"  缓存键: {cache_key}")
         
         self.current_search_params = search_params
         
@@ -542,20 +574,45 @@ class SearchToolWindow(QMainWindow):
     def _on_tool_clicked(self, btn):
         """工具按钮点击"""
         tool_data = btn.tool_data
+        self.nodesnames_list, self.nodesclasslsit = nukendoesget.getcurnodes()
         
         print(f"[执行工具] {tool_data['tname']}")
         print(f"   工具路径: {tool_data['tpath']}")
-        # print(f"   图标路径: {tool_data['tpng']}")
+
+        # 执行后隐藏窗口
+        self.refresh_status()
+
+        tool_path = os.path.join(self.toolbox_path, tool_data['tpath'])
+
+        # 验证路径存在
+        if not os.path.exists(tool_path):
+            QMessageBox.information(
+                None, 
+                "提示",
+                f"找不到工具文件:\n{tool_path}\n可能已被删除或移动"
+            )
+            return
+        
+        # 执行工具
+        try:
+            nuke.execute_tool(tool_path,self.nodesnames_list)
+        except Exception as e:
+            QMessageBox.critical(
+                None,
+                "执行错误",
+                f"无法执行工具:\n{tool_path}\n错误: {str(e)}"
+            )
+
+
+
         if tool_data['tpng']:
             print(f"   图标完整路径: {os.path.join(self.toolbox_path, tool_data['tpng'])}")
-            # print(f"   图标存在: {os.path.exists(os.path.join(self.toolbox_path, tool_data['tpng']))}")
         else:
             print(f"   无图标")
         
-        # TODO: 在这里实现工具执行逻辑
+
         
-        # 执行后隐藏窗口
-        self.hide()
+        
     
     def closeEvent(self, event):
         self.db_query.close()

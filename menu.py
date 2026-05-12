@@ -3,8 +3,17 @@ import nuke
 import os
 import codecs
 import window_panel 
+
+
+import nuke
+import toaddpanel
+import settool
+
+
+
  
 # ---------------------------------------------------------
+toaddpanel.run_show_funa
 bar = nuke.menu('Nodes')
 toolbar = bar.addMenu("ZayvinTools")
 toolbar.addCommand('Button', window_panel.run_show,"A",shortcutContext=2)
