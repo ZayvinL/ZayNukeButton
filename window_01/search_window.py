@@ -96,7 +96,7 @@ class SearchToolWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.setContentsMargins(10, 1, 10, 10)
         main_layout.setSpacing(5)
         
         # 标题栏
