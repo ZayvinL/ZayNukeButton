@@ -29,6 +29,21 @@ class ToolButton(QWidget):
         layout.setContentsMargins(1, 1, 1, 1)
         layout.setSpacing(0)
         
+        # 数字标记（临时调试用）
+        if hasattr(self, 'button_index'):
+            self.index_label = QLabel(str(self.button_index))
+            self.index_label.setAlignment(Qt.AlignCenter)
+            self.index_label.setStyleSheet("""
+                QLabel {
+                    color: rgba(255, 100, 100, 255);
+                    font-size: 10px;
+                    font-weight: bold;
+                    background-color: transparent;
+                    padding: 0px;
+                }
+            """)
+            layout.addWidget(self.index_label)
+        
         # 文字标签（支持自动换行）
         name = self.tool_data['tname']
         if '.' in name:
@@ -105,6 +120,66 @@ class ToolButton(QWidget):
                 background-color: transparent;
             }}
         """)
+    
+    def update_content(self, tool_data):
+        """更新按钮内容（虚拟列表专用，不重建布局）"""
+        self.tool_data = tool_data
+        
+        # 更新或创建数字标记（临时调试用）
+        if hasattr(self, 'button_index'):
+            if not hasattr(self, 'index_label'):
+                # 创建索引标签
+                self.index_label = QLabel(str(self.button_index))
+                self.index_label.setAlignment(Qt.AlignCenter)
+                self.index_label.setStyleSheet("""
+                    QLabel {
+                        color: rgba(255, 100, 100, 255);
+                        font-size: 10px;
+                        font-weight: bold;
+                        background-color: transparent;
+                        padding: 0px;
+                    }
+                """)
+                # 插入到布局的第一个位置
+                self.layout().insertWidget(0, self.index_label)
+            else:
+                # 更新索引标签文本
+                self.index_label.setText(str(self.button_index))
+        
+        # 更新文字
+        name = tool_data['tname']
+        if '.' in name:
+            name = name[:name.rindex('.')]
+        
+        self.text_label.setText(name)
+        
+        # 更新 tooltip
+        tooltip_parts = [
+            f"<b>工具名称:</b> {tool_data['tname']}",
+            f"<b>说明:</b> {tool_data['ttip']}",
+            f"<b>类:</b> {tool_data['tclass']}"
+        ]
+        
+        if tool_data['tpath']:
+            tool_path = tool_data['tpath']
+            if self.toolbox_path and not os.path.isabs(tool_path):
+                tool_path = os.path.join(self.toolbox_path, tool_path)
+            tooltip_parts.append(f"<b>路径:</b> {tool_path}")
+        
+        if tool_data['tpng']:
+            icon_path = tool_data['tpng']
+            icon_path = os.path.join(self.toolbox_path, icon_path)
+            if os.path.exists(icon_path):
+                ed_image_path = urllib.parse.quote(icon_path, safe='')
+                tooltip_parts.append(f'<img src="{ed_image_path}" width="350">')
+            else:
+                tooltip_parts.append(f"<b>图标路径:</b> {icon_path} (文件不存在)")
+        
+        if tool_data['is_favorite']:
+            tooltip_parts.append("⭐ 已收藏")
+        
+        tooltip_html = "<html><body><p>" + "</p><p>".join(tooltip_parts) + "</p></body></html>"
+        self.setToolTip(tooltip_html)
     
     def mousePressEvent(self, event):
         """鼠标按下事件"""

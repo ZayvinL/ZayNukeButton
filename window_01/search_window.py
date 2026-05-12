@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt, QTimer, QEvent
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QGridLayout, QScrollArea, QLineEdit, QPushButton, 
-    QLabel, QMessageBox
+    QLabel, QMessageBox, QSlider
 )
 from PySide6.QtGui import QKeySequence, QShortcut
 
@@ -36,18 +36,18 @@ class SearchToolWindow(QMainWindow):
         self.grid_spacing = 1  # 按钮间距（可调整）
         self.grid_margins = 1 # 网格边距（可调整）
         
-        # 计算窗口尺寸
-        # 窗口宽度：5列按钮 + 间距 + 边距
-        window_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing + 30
+        # 虚拟列表参数
+        self.visible_rows = 3  # 可见行数
+        self.buffer_rows = 2  # 缓冲行数（上下各留）
+        self.total_button_slots = (self.visible_rows + self.buffer_rows * 2) * self.tools_per_row  # 总按钮槽位
         
-        # 窗口高度：标题栏(35) + 搜索框(35) + 按钮区域(显示3行) + 边距
-        # 窗口高度 < content_widget 高度，确保有滚动空间
-        visible_rows = 3  # 窗口内完整显示 3 行
-        button_area_height = visible_rows * self.button_height + (visible_rows + 1) * self.grid_spacing
-        window_height = 35 + 35 + button_area_height + 20  # 约 355 像素
+        # 计算窗口尺寸
+        window_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing + 30
+        button_area_height = self.visible_rows * self.button_height + (self.visible_rows + 1) * self.grid_spacing
+        window_height = 35 + 35 + button_area_height + 20
         
         self.setMinimumSize(window_width, window_height)
-        self.setMaximumSize(window_width + 50, window_height + 20)  # 窗口高度固定
+        self.setMaximumSize(window_width + 50, 700)
         
         try:
             db_path = _get_user_db_path()
@@ -59,15 +59,9 @@ class SearchToolWindow(QMainWindow):
         self.icon_cache = IconCache(toolbox_path)
         self.smart_cache = SmartCache(max_size=100)
         
-
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_NoSystemBackground)
         self.setAttribute(Qt.WA_TranslucentBackground)
-
-        # self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Tool)
-        
-        # self.setAttribute(Qt.WA_NoSystemBackground, False)
-        # self.setAttribute(Qt.WA_TranslucentBackground, False)
         
         self.dragging = False
         self.offset = None
@@ -75,9 +69,13 @@ class SearchToolWindow(QMainWindow):
         self.current_offset = 0
         self.total_count = 0
         
+        # 虚拟列表数据
+        self.all_tools = []  # 所有工具数据（从数据库加载）
+        self.tool_buttons = []  # 固定的按钮对象列表
+        self.start_index = 0  # 当前显示的第一个工具索引
+        
         self._setup_ui()
         self.installEventFilter(self)
-        # 绑定 ESC 快捷键关闭窗口
         self._setup_shortcuts()
         
         QTimer.singleShot(100, self._load_initial_data)
@@ -155,76 +153,64 @@ class SearchToolWindow(QMainWindow):
         
         main_layout.addLayout(search_layout)
         
-        # 统计信息
-        # self.stats_label = QLabel("加载中...")
-        # self.stats_label.setStyleSheet("""
-        #     QLabel {
-        #         padding: 5px;
-        #         font-size: 11px;
-        #         color: rgba(180, 190, 200, 255);
-        #     }
-        # """)
-        # main_layout.addWidget(self.stats_label)
+        # 创建主内容区域（横向布局：按钮区 + 滑块）
+        content_hlayout = QHBoxLayout()
+        content_hlayout.setContentsMargins(0, 0, 0, 0)
+        content_hlayout.setSpacing(5)
         
-        # 结果显示区（滚动区域）
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(False)  # 保持固定尺寸
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # 始终显示滚动条
+        # 左侧：按钮网格区域
+        self.grid_container = QWidget()
+        self.grid_layout = QGridLayout(self.grid_container)
+        self.grid_layout.setContentsMargins(self.grid_margins, self.grid_margins, self.grid_margins, self.grid_margins)
+        self.grid_layout.setSpacing(self.grid_spacing)
         
-        # 优化滚动条样式
-        self.scroll_area.setStyleSheet("""
-            QScrollArea {
-                background-color: rgba(40, 50, 60, 230);
-                border: 1px solid rgba(80, 100, 120, 150);
-                border-radius: 3px;
-            }
-            QScrollBar:vertical {
+        # 预创建按钮槽位
+        self._create_button_slots()
+        
+        content_hlayout.addWidget(self.grid_container)
+        
+        # 右侧：自定义滑块（替代滚动条）
+        self.slider = QSlider(Qt.Vertical)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(0)  # 初始范围
+        self.slider.setPageStep(1)
+        self.slider.setSingleStep(1)
+        self.slider.setTickPosition(QSlider.NoTicks)
+        self.slider.setInvertedAppearance(True)  # 反转外观：0 在顶部，最大值在底部
+        
+        # 安装事件过滤器，支持鼠标滚轮
+        self.slider.installEventFilter(self)
+        
+        self.slider.setStyleSheet("""
+            QSlider {
                 background-color: rgba(50, 60, 70, 100);
+                border: none;
+                border-radius: 5px;
                 width: 10px;
-                margin: 0px;
+            }
+            QSlider::groove:vertical {
+                background: rgba(50, 60, 70, 150);
+                width: 10px;
                 border-radius: 5px;
             }
-            QScrollBar::handle:vertical {
-                background-color: rgba(100, 150, 200, 180);
+            QSlider::handle:vertical {
+                background: rgba(100, 150, 200, 180);
+                height: 30px;
                 border-radius: 5px;
-                min-height: 30px;
+                margin: 0px -2px;
             }
-            QScrollBar::handle:vertical:hover {
-                background-color: rgba(120, 170, 220, 220);
+            QSlider::handle:vertical:hover {
+                background: rgba(120, 170, 220, 220);
             }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
-            QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {
-                image: none;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background-color: transparent;
+            QSlider::add-page:vertical, QSlider::sub-page:vertical {
+                background: transparent;
             }
         """)
+        self.slider.valueChanged.connect(self._on_slider_changed)
         
-        self.content_widget = QWidget()
-        self.content_layout = QVBoxLayout(self.content_widget)
-        ccsize = 0
-        self.content_layout.setContentsMargins(ccsize, ccsize, ccsize, ccsize)
-        self.content_layout.setSpacing(ccsize)
+        content_hlayout.addWidget(self.slider)
         
-        # 设置最小宽度
-        total_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing
-        self.content_widget.setMinimumWidth(total_width)
-        
-        # 关键：给 content_widget 设置固定高度，制造滚动空间
-        # 设置为 4 行高度（3 行工具 + 1 行空白），刚好够滚动加载
-        scroll_space_rows = 4  # 滚动空间：4 行（比初始工具多 1 行）
-        content_fixed_height = scroll_space_rows * self.button_height + (scroll_space_rows + 1) * self.grid_spacing
-        self.content_widget.setFixedHeight(content_fixed_height)
-        
-        self.scroll_area.setWidget(self.content_widget)
-        main_layout.addWidget(self.scroll_area)
-        
-        # 监听滚动事件
-        self.scroll_area.verticalScrollBar().valueChanged.connect(self._on_scroll)
+        main_layout.addLayout(content_hlayout)
         
         central_widget.setStyleSheet("""
             QWidget {
@@ -232,6 +218,23 @@ class SearchToolWindow(QMainWindow):
                 border-radius: 5px;
             }
         """)
+    
+    def eventFilter(self, obj, event):
+        """事件过滤器 - 处理滑块滚轮事件"""
+        if obj == self.slider and event.type() == QEvent.Wheel:
+            # 处理滚轮事件
+            delta = event.angleDelta().y()
+            if delta > 0:
+                # 向上滚动：滑块向上移动，显示更早的工具
+                self.slider.setValue(max(0, self.slider.value() - 1))
+            else:
+                # 向下滚动：滑块向下移动，显示更晚的工具
+                self.slider.setValue(min(self.slider.maximum(), self.slider.value() + 1))
+            
+            # 阻止默认行为
+            return True
+        
+        return super().eventFilter(obj, event)
     
     def _parse_search_text(self, text):
         """解析搜索文本"""
@@ -298,38 +301,44 @@ class SearchToolWindow(QMainWindow):
         # 检查缓存
         cached_data = self.smart_cache.get(cache_key)
         if cached_data:
-            print(f"  [缓存命中] 总数: {cached_data['total_count']}, 工具数: {len(cached_data['tools'])}")
+            print(f"  [缓存命中] 总数: {cached_data['total_count']}")
             self.total_count = cached_data['total_count']
-            tools = cached_data['tools']
-            self._display_tools(tools)
+            self.all_tools = cached_data['tools']
+            self.start_index = 0
+            
+            # 更新滑块范围
+            self._update_slider_range()
+            
+            # 显示初始工具
+            self._update_visible_buttons()
             self._update_stats()
-            # 初始加载后更新高度
-            self._update_content_height()
             return
         
-        # 从数据库查询
-        print(f"  [数据库查询] 开始查询...")
-        tools = self.db_query.search_tools(
-            search_params,
-            limit=self.page_size,
-            offset=self.current_offset
-        )
-        
-        print(f"  [数据库查询] 找到 {len(tools)} 个工具")
-        
+        # 从数据库查询总数量
         self.total_count = self.db_query.get_total_count(search_params)
         print(f"  [数据库查询] 总数: {self.total_count}")
         
+        # 查询初始工具（所有工具）
+        self.all_tools = self.db_query.search_tools(
+            search_params,
+            limit=-1,
+            offset=0
+        )
+        
         # 缓存结果
         self.smart_cache.set(cache_key, {
-            'tools': tools,
+            'tools': self.all_tools,
             'total_count': self.total_count
         })
         
-        self._display_tools(tools)
+        self.start_index = 0
+        
+        # 更新滑块范围
+        self._update_slider_range()
+        
+        # 显示初始工具
+        self._update_visible_buttons()
         self._update_stats()
-        # 初始加载后更新高度
-        self._update_content_height()
         print(f"{'='*60}\n")
     
     def _display_tools(self, tools):
@@ -351,7 +360,7 @@ class SearchToolWindow(QMainWindow):
         
         grid_widget = QWidget()
         grid_layout = QGridLayout(grid_widget)
-        grid_layout.setContentsMargins(self.grid_margins, self.grid_margins, self.grid_margins, self.grid_margins)
+        grid_layout.setContentsMargins(self.grid_margins, self.grid_margins, self.grid_margins, self.grid_spacing)
         grid_layout.setSpacing(self.grid_spacing)
         
         # 计算实际需要的行数
@@ -401,113 +410,129 @@ class SearchToolWindow(QMainWindow):
     
     def _clear_results(self):
         """清空结果显示"""
-        # 清空 content_layout 中的所有 widget
-        while self.content_layout.count() > 0:
-            item = self.content_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-    
-    def _on_scroll(self, value):
-        """滚动事件"""
-        scrollbar = self.scroll_area.verticalScrollBar()
-        max_value = scrollbar.maximum()
-        
-        # 提前触发加载：距离底部 200 像素（约 2.5 行）时就加载
-        if value >= max_value - 200 and self.current_offset + self.page_size < self.total_count:
-            self._load_more()
-        
-        # 关键：如果滚动到底部且已加载全部工具，更新 content_widget 高度
-        if value >= max_value and self.current_offset + self.page_size >= self.total_count:
-            self._update_content_height()
+        self.all_tools.clear()
+        self.total_count = 0
+        self.start_index = 0
+        self._update_content_height()
+        self._update_visible_buttons()
     
     def _update_content_height(self):
-        """根据数据库总工具数设置 content_widget 的固定高度"""
-        # 关键：根据数据库总工具数计算总行数
-        total_rows = (self.total_count + self.tools_per_row - 1) // self.tools_per_row
+        """设置滚动条范围（不改变 content_widget 高度）"""
+        # content_widget 高度固定为可见区域（3行）
+        visible_height = self.visible_rows * self.button_height + (self.visible_rows + 1) * self.grid_spacing
+        self.content_widget.setFixedHeight(visible_height)
         
-        # 计算总高度（所有工具的总行数）
-        total_height = total_rows * self.button_height + (total_rows + 1) * self.grid_spacing
-        
-        # 更新 content_widget 的固定高度（基于总工具数）
-        self.content_widget.setFixedHeight(total_height)
-    
-    def _load_more(self):
-        """加载更多工具"""
-        if self.current_offset + self.page_size >= self.total_count:
+        if self.total_count == 0:
+            # 没有工具时，设置滚动条范围很小
+            scrollbar = self.scroll_area.verticalScrollBar()
+            scrollbar.setRange(0, 1)
             return
         
-        self.current_offset += self.page_size
+        # 计算总行数
+        total_rows = (self.total_count + self.tools_per_row - 1) // self.tools_per_row
+        visible_rows = self.visible_rows
+        scrollable_rows = max(0, total_rows - visible_rows)
         
-        cache_key = self._search_params_to_key(self.current_search_params)
-        cached_data = self.smart_cache.get(cache_key)
+        # 手动设置滚动条的范围（模拟总高度）
+        scrollbar = self.scroll_area.verticalScrollBar()
+        max_range = scrollable_rows * self.button_height
+        scrollbar.setRange(0, max_range)
+    
+    def _update_slider_range(self):
+        """根据数据库总工具数设置滑块范围"""
+        if self.total_count == 0:
+            self.slider.setMaximum(0)
+            self.slider.setValue(0)
+            return
         
-        if cached_data and len(cached_data['tools']) >= self.current_offset + self.page_size:
-            tools = cached_data['tools'][self.current_offset:self.current_offset + self.page_size]
-        else:
-            tools = self.db_query.search_tools(
-                self.current_search_params,
-                limit=self.page_size,
-                offset=self.current_offset
-            )
-            
-            if cached_data:
-                cached_data['tools'].extend(tools)
-            else:
-                self.smart_cache.set(cache_key, {
-                    'tools': tools,
-                    'total_count': self.total_count
-                })
+        # 计算总行数
+        total_rows = (self.total_count + self.tools_per_row - 1) // self.tools_per_row
+        visible_rows = self.visible_rows
+        scrollable_rows = max(0, total_rows - visible_rows)
         
-        grid_widget = None
-        grid_layout = None
-        for i in range(self.content_layout.count()):
-            widget = self.content_layout.itemAt(i).widget()
-            if widget and isinstance(widget.layout(), QGridLayout):
-                grid_widget = widget
-                grid_layout = widget.layout()
-                break
+        # 设置滑块范围（正向：0 到 scrollable_rows）
+        self.slider.setMaximum(scrollable_rows)
+        self.slider.setValue(0)  # 重置到顶部
         
-        if grid_widget and grid_layout:
-            row_count = grid_layout.rowCount()
-            start_row = row_count - 1
-            last_row_items = 0
-            for c in range(self.tools_per_row):
-                item = grid_layout.itemAtPosition(start_row, c)
-                if item and item.widget():
-                    last_row_items += 1
+        print(f"[滑块范围] total_count={self.total_count}, scrollable_rows={scrollable_rows}")
+    
+    def _on_slider_changed(self, value):
+        """滑块值变化 - 虚拟列表核心"""
+        if not self.all_tools or self.total_count == 0:
+            return
+        
+        # 直接使用滑块值（不反转）
+        # 滑块在顶部（value=0）→ 显示工具 0-14
+        # 滑块在底部（value=max）→ 显示工具 15-29
+        self.start_index = value * self.tools_per_row
+        
+        print(f"[滑块调试] value={value}, start_index={self.start_index}")
+        
+        # 更新按钮内容
+        self._update_visible_buttons()
+    
+    def _update_visible_buttons(self):
+        """更新可见区域的按钮内容（虚拟列表核心）"""
+        if not self.all_tools:
+            for btn in self.tool_buttons:
+                btn.setVisible(False)
+            return
+        
+        # 只更新可见区域的按钮（15 个）
+        visible_count = self.visible_rows * self.tools_per_row
+        
+        for i in range(len(self.tool_buttons)):
+            btn = self.tool_buttons[i]
+            tool_index = self.start_index + i
             
-            if last_row_items >= self.tools_per_row:
-                start_row += 1
-            
-            row = start_row
-            col = last_row_items if last_row_items < self.tools_per_row else 0
-            
-            for tool_data in tools:
+            if tool_index < len(self.all_tools):
+                tool_data = self.all_tools[tool_index]
                 tool_copy = dict(tool_data)
                 
                 if tool_copy['tpng']:
                     tool_copy['tpng'] = os.path.join(self.toolbox_path, tool_copy['tpng'])
                 
-                tool_btn = ToolButton(tool_copy)
-                tool_btn.setFixedSize(self.button_width, self.button_height)
-                
-                tool_btn.clicked.connect(lambda checked, btn=tool_btn: self._on_tool_clicked(btn))
-                
-                grid_layout.addWidget(tool_btn, row, col)
-                
-                col += 1
-                if col >= self.tools_per_row:
-                    col = 0
-                    row += 1
+                btn.tool_data = tool_copy
+                btn.button_index = tool_index  # 设置索引
+                btn.update_content(tool_copy)
+                btn.setVisible(True)
+            else:
+                btn.setVisible(False)
+    
+    def _create_button_slots(self):
+        """创建固定的按钮槽位（虚拟列表）"""
+        for btn in self.tool_buttons:
+            btn.setParent(None)
+            btn.deleteLater()
+        self.tool_buttons.clear()
+        
+        # 只创建可见区域的按钮（15 个）
+        total_slots = self.visible_rows * self.tools_per_row
+        for i in range(total_slots):
+            empty_data = {
+                'tname': '',
+                'ttip': '',
+                'tclass': '',
+                'tpath': '',
+                'tpng': '',
+                'is_favorite': False
+            }
+            btn = ToolButton(empty_data)
+            btn.setFixedSize(self.button_width, self.button_height)
+            btn.setVisible(False)
             
-            # 更新 grid_widget 的固定尺寸
-            new_row_count = grid_layout.rowCount()
-            new_total_height = new_row_count * self.button_height + (new_row_count + 1) * self.grid_spacing
-            total_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing
-            grid_widget.setFixedSize(total_width, new_total_height)
+            btn.clicked.connect(lambda checked, b=btn: self._on_tool_clicked(b))
             
-            # 关键：更新 content_widget 的固定高度，让滚动条反映全部工具
-            self._update_content_height()
+            self.tool_buttons.append(btn)
+            
+            row = i // self.tools_per_row
+            col = i % self.tools_per_row
+            self.grid_layout.addWidget(btn, row, col)
+        
+        # grid_container 固定大小（只容纳可见区域）
+        grid_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing
+        grid_height = self.visible_rows * self.button_height + (self.visible_rows + 1) * self.grid_spacing
+        self.grid_container.setFixedSize(grid_width, grid_height)
     
     def _update_stats(self):
         """更新统计信息"""
@@ -531,21 +556,6 @@ class SearchToolWindow(QMainWindow):
         
         # 执行后隐藏窗口
         self.hide()
-    
-    def eventFilter(self, obj, event):
-        """窗口拖动"""
-        if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
-            self.dragging = True
-            self.offset = event.position().toPoint()
-            return True
-        elif event.type() == QEvent.MouseMove and self.dragging and self.offset:
-            self.move(self.mapToGlobal(event.position().toPoint() - self.offset))
-            return True
-        elif event.type() == QEvent.MouseButtonRelease:
-            self.dragging = False
-            self.offset = None
-            return True
-        return super().eventFilter(obj, event)
     
     def closeEvent(self, event):
         self.db_query.close()
