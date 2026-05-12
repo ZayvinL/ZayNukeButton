@@ -37,8 +37,8 @@ class SearchToolWindow(QMainWindow):
         self.grid_margins = 1 # 网格边距（可调整）
         
         # 透明度参数（0-255，0=完全透明，255=完全不透明）
-        self.button_bg_alpha = 50  # 按钮区域背景透明度
-        self.search_bg_alpha = 230  # 搜索框背景透明度
+        self.button_bg_alpha = 150  # 按钮区域背景透明度
+        self.search_bg_alpha = 50  # 搜索框背景透明度（与按钮区域一致）
         
         # 虚拟列表参数
         self.visible_rows = 3  # 可见行数
@@ -181,9 +181,9 @@ class SearchToolWindow(QMainWindow):
         self.search_input.textChanged.connect(self._on_search_changed)
         search_layout.addWidget(self.search_input)
         
-        # 关闭按钮
+        # 关闭按钮（宽度与滑块一致，18px）
         close_btn = QPushButton("×")
-        close_btn.setFixedSize(30, 30)
+        close_btn.setFixedSize(18, 30)
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: rgba(200, 60, 60, {self.search_bg_alpha});
@@ -192,6 +192,7 @@ class SearchToolWindow(QMainWindow):
                 border-radius: 3px;
                 font-size: 18px;
                 font-weight: bold;
+                padding: 0px;
             }}
             QPushButton:hover {{
                 background-color: rgba(220, 80, 80, {self.search_bg_alpha});
