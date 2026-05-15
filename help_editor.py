@@ -2,7 +2,7 @@ import shutil
 import os
 import re
 from PySide6.QtWidgets import (QFileDialog, QMessageBox)
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QUrl, Qt
 import paths_setup as psp
 
 class HelpEditorMixin:
@@ -82,6 +82,8 @@ class HelpEditorMixin:
             
             # 更新数据库和 JSON
             md_rel_path = os.path.relpath(md_dest_path, tools_root).replace(os.sep, '/')
+            
+            # 关键：立即更新 self.current_tool_data
             self.current_tool_data['help_file'] = md_rel_path
             
             # 更新数据库
@@ -112,10 +114,16 @@ class HelpEditorMixin:
                 f"帮助文档已更新:\n{md_dest_path}\n\n"
                 f"处理了 {len(processed_images)} 张图片到 pnghelp 目录")
             
-            # 刷新预览
-            if hasattr(self, 'on_selection_changed'):
-                self.on_selection_changed(self.tool_list.currentItem(), None)
-                
+            # 关键：立即刷新当前选中项的显示
+            if hasattr(self, 'tool_list') and self.tool_list:
+                current_item = self.tool_list.currentItem()
+                if current_item:
+                    # 更新当前项的数据
+                    current_item.setData(Qt.ItemDataRole.UserRole, self.current_tool_data)
+                    # 触发选择变化事件，刷新右侧面板
+                    if hasattr(self, 'on_selection_changed'):
+                        self.on_selection_changed(current_item, None)
+            
         except Exception as e:
             import traceback
             QMessageBox.critical(self, "错误", f"处理失败:\n{str(e)}\n\n{traceback.format_exc()}")
@@ -200,29 +208,129 @@ class HelpEditorMixin:
         self._select_help_file()
 
     def export_md_to_html(self):
-        """导出 Markdown 帮助文档"""
+        """导出 Markdown 文档及图片依赖到独立目录"""
         if not self.current_tool_data:
             QMessageBox.warning(self, "警告", "请先选择一个工具")
             return
         
-        help_full_path = self.current_tool_data.get('help_file')
-        if not help_full_path:
+        help_file = self.current_tool_data.get('help_file')
+        if not help_file:
             QMessageBox.warning(self, "警告", "当前工具没有帮助文档")
             return
         
-        # 设置导出路径
-        export_path, _ = QFileDialog.getSaveFileName(
-            self, "导出 Markdown 文档", "", "Markdown Files (*.md *.markdown)"
+        tools_root = psp.tools_path_get()
+        help_full_path = os.path.join(tools_root, help_file.replace('/', os.sep))
+        
+        if not os.path.exists(help_full_path):
+            QMessageBox.warning(self, "警告", f"帮助文档不存在:\n{help_full_path}")
+            return
+        
+        # 选择导出目录
+        export_dir = QFileDialog.getExistingDirectory(
+            self, "选择导出目录", "", QFileDialog.ShowDirsOnly
         )
         
-        if not export_path:
+        if not export_dir:
             return
         
         try:
-            shutil.copy2(help_full_path, export_path)
-            QMessageBox.information(self, "成功", f"Markdown 文档已导出到:\n{export_path}")
+            # 创建导出子目录
+            tool_name = self.current_tool_data.get('name', 'help')
+            safe_name = self._sanitize_filename(tool_name)
+            export_subdir = os.path.join(export_dir, f"{safe_name}_help")
+            os.makedirs(export_subdir, exist_ok=True)
+            
+            # 创建图片子目录
+            images_subdir = os.path.join(export_subdir, 'images')
+            os.makedirs(images_subdir, exist_ok=True)
+            
+            # 读取 Markdown 内容
+            with open(help_full_path, 'r', encoding='utf-8') as f:
+                md_content = f.read()
+            
+            # 获取 pnghelp 目录
+            pnghelp_dir = os.path.join(os.path.dirname(__file__), 'pnghelp')
+            
+            # 提取所有图片引用
+            image_refs = self._extract_images_from_markdown(md_content)
+            
+            # 复制图片并更新路径
+            processed_images = {}
+            for img_filename in image_refs:
+                # 源文件在 pnghelp 目录
+                src_img_path = os.path.join(pnghelp_dir, img_filename)
+                
+                if not os.path.exists(src_img_path):
+                    print(f"警告：图片文件不存在: {src_img_path}")
+                    continue
+                
+                # 目标路径
+                dest_img_path = os.path.join(images_subdir, img_filename)
+                
+                # 复制图片
+                shutil.copy2(src_img_path, dest_img_path)
+                processed_images[img_filename] = os.path.join('images', img_filename)
+                print(f"已复制图片: {img_filename}")
+            
+            # 更新 Markdown 中的图片路径
+            for old_filename, new_rel_path in processed_images.items():
+                # 替换 ![alt](filename) 格式
+                md_content = md_content.replace(f']({old_filename})', f']({new_rel_path})')
+                # 替换 <img src="filename"> 格式
+                md_content = md_content.replace(f'src="{old_filename}"', f'src="{new_rel_path}"')
+                md_content = md_content.replace(f"src='{old_filename}'", f"src='{new_rel_path}'")
+            
+            # 保存 Markdown 文件
+            md_dest_path = os.path.join(export_subdir, f"{safe_name}.md")
+            with open(md_dest_path, 'w', encoding='utf-8') as f:
+                f.write(md_content)
+            
+            # 创建 README 说明文件
+            readme_path = os.path.join(export_subdir, 'README.txt')
+            with open(readme_path, 'w', encoding='utf-8') as f:
+                f.write(f"""帮助文档导出说明
+==================
+
+工具名称：{tool_name}
+导出时间：{self._get_current_time()}
+
+文件结构：
+── {safe_name}.md          # Markdown 帮助文档
+├── images/                 # 图片资源目录
+│   ├── ...                 # 相关图片文件
+└── README.txt              # 本说明文件
+
+使用方法：
+1. 使用 Markdown 编辑器打开 {safe_name}.md 文件
+2. 确保 images 目录与 .md 文件在同一目录
+3. 推荐使用 Typora、VS Code、Obsidian 等编辑器查看
+
+支持的编辑器：
+- Typora（推荐）
+- Visual Studio Code（安装 Markdown 插件）
+- Obsidian
+- Markdown Preview Enhanced
+
+注意事项：
+- 请勿修改 images 目录结构
+- 图片路径使用相对路径，确保文档可移植
+""")
+            
+            QMessageBox.information(self, "成功", 
+                f"帮助文档已导出到:\n{export_subdir}\n\n"
+                f"包含:\n"
+                f"- Markdown 文档\n"
+                f"- {len(processed_images)} 张图片资源\n\n"
+                f"可以直接用 Markdown 编辑器打开查看！")
+            
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"导出失败:\n{str(e)}")
+            import traceback
+            QMessageBox.critical(self, "错误", f"导出失败:\n{str(e)}\n\n{traceback.format_exc()}")
+    
+    def _get_current_time(self):
+        """获取当前时间字符串"""
+        from datetime import datetime
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     def copy_md_to_clipboard(self):
         """此功能已禁用"""

@@ -262,9 +262,9 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         self.btn_save_md.setToolTip("更换 HTML 帮助文档文件")
         help_toolbar.addWidget(self.btn_save_md)
         
-        self.btn_export_html = QPushButton("🌐 导出HTML")
+        self.btn_export_html = QPushButton("📦 导出MD")
         self.btn_export_html.clicked.connect(self.export_md_to_html)
-        self.btn_export_html.setToolTip("将预览内容导出为 HTML 文件")
+        self.btn_export_html.setToolTip("导出 Markdown 文档及图片依赖")
         help_toolbar.addWidget(self.btn_export_html)
         
         help_toolbar.addStretch()
