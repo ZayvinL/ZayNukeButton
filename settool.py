@@ -26,15 +26,7 @@ import toolsfile_json as tfj
 from widgets import ToolItemWidget
 from help_editor import HelpEditorMixin
 
-# 尝试导入 markdown
-try:
-    import markdown
-    HAS_MARKDOWN = True
-    print("成功加载 markdown 库")
-except ImportError:
-    HAS_MARKDOWN = False
-    print("警告: 未安装 markdown 库，Markdown 预览功能受限")
-    print("运行以下命令安装: pip install markdown --target=./libs")
+
 
 
 class ToolManagerApp(QMainWindow, HelpEditorMixin):

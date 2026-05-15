@@ -379,9 +379,7 @@ class SearchToolWindow(QMainWindow):
     
     def _load_initial_data(self):
         """加载初始数据（优先使用传入的搜索文本）"""
-        # 设置焦点到滚动条（滑块）
-        # self.search_input.setFocus()
-        self.slider.setFocus()
+        
         
         # 如果有初始搜索文本，直接使用；否则显示所有工具
         if self.initial_search_text:
@@ -390,6 +388,10 @@ class SearchToolWindow(QMainWindow):
             self.search_input.setText("")
         
         self._perform_search()
+
+        # 设置焦点到滚动条（滑块）
+        # self.search_input.setFocus()
+        self.slider.setFocus()
     
     def _on_search_changed(self, text):
         """搜索框内容变化 - 使用 debounce 避免频繁搜索"""

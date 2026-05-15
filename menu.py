@@ -8,7 +8,7 @@ import window_panel
 import nuke
 import toaddpanel
 import settool
-
+import export_panel
 
 
  
@@ -17,6 +17,7 @@ toaddpanel.run_show_funa
 bar = nuke.menu('Nodes')
 toolbar = bar.addMenu("ZayvinTools")
 toolbar.addCommand('Button', window_panel.run_show,"A",shortcutContext=2)
+toolbar.addCommand('Export as BTL', export_panel.run_show)
 
 
 # ---------------------------------------------------------

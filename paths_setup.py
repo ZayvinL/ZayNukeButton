@@ -11,6 +11,8 @@ def local_path_get():
 # tools
 def tools_path_get():
     toolsPath = local_path_get() + "tools/"
+    # 确保输出文件夹存在
+    os.makedirs(toolsPath, exist_ok=True)
     return toolsPath
 
 # styles
@@ -43,3 +45,10 @@ def get_user_dbjson_path():
     currentUser = get_current_user()
     userPath = local_path_get() + "users/" + currentUser + "/db_config.json" 
     return userPath
+
+# 临时存放
+def tempexportpath_get():
+    tempexportpath = local_path_get() + "tempexport/"
+    # 确保输出文件夹存在
+    os.makedirs(tempexportpath, exist_ok=True)
+    return tempexportpath
