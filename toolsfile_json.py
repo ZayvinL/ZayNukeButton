@@ -78,7 +78,7 @@ def scan_tool_files():
             
             tool_groups[tool_key]['main_file'] = get_relative_path(file_path, tools_path)
             
-        # 识别配套文件（只查找 .json、.png、.html）
+        # 识别配套文件（只查找 .json、.png、.md）
         elif filename.endswith('.json'):
             base_name = filename.replace('.json', '')
             for key, group in tool_groups.items():
@@ -93,8 +93,14 @@ def scan_tool_files():
                     group['icon_file'] = get_relative_path(file_path, tools_path)
                     break
                     
-        elif filename.endswith('.html'):
-            base_name = filename.replace('.html', '')
+        elif filename.endswith(('.html', '.md', '.md')):
+            base_name = filename.replace('.html', '').replace('.md', '').replace('.md', '')
+            for key, group in tool_groups.items():
+                if group['tool_name'] == base_name and group['folder_rel'] == get_relative_path(dirname, tools_path):
+                    group['html_file'] = get_relative_path(file_path, tools_path)
+                    break
+        elif filename.endswith(('.md', '.markdown')):
+            base_name = filename.replace('.md', '').replace('.markdown', '')
             for key, group in tool_groups.items():
                 if group['tool_name'] == base_name and group['folder_rel'] == get_relative_path(dirname, tools_path):
                     group['html_file'] = get_relative_path(file_path, tools_path)

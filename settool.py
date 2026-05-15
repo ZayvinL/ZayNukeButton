@@ -168,26 +168,42 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         # 工具信息区域
         info_group = QGroupBox("工具信息")
         info_layout = QFormLayout()
-        info_layout.setSpacing(8)
+        info_layout.setSpacing(10)
+        info_layout.setContentsMargins(10, 10, 10, 10)
+        info_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        info_layout.setRowWrapPolicy(QFormLayout.DontWrapRows)
+        info_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
         self.lbl_id = QLabel("")
         self.lbl_id.setWordWrap(True)
+        self.lbl_id.setMinimumHeight(20)
+        self.lbl_id.setStyleSheet("padding: 2px 0;")
         info_layout.addRow("UUID:", self.lbl_id)
         
         self.lbl_name = QLabel("")
+        self.lbl_name.setMinimumHeight(20)
+        self.lbl_name.setStyleSheet("padding: 2px 0;")
         info_layout.addRow("名称:", self.lbl_name)
         
         self.lbl_tag = QLabel("")
+        self.lbl_tag.setMinimumHeight(20)
+        self.lbl_tag.setStyleSheet("padding: 2px 0;")
         info_layout.addRow("标签:", self.lbl_tag)
         
         self.lbl_matchClass = QLabel("")
+        self.lbl_matchClass.setMinimumHeight(20)
+        self.lbl_matchClass.setStyleSheet("padding: 2px 0;")
         info_layout.addRow("匹配类:", self.lbl_matchClass)
         
         self.lbl_category = QLabel("")
+        self.lbl_category.setMinimumHeight(20)
+        self.lbl_category.setStyleSheet("padding: 2px 0;")
         info_layout.addRow("分类:", self.lbl_category)
         
         self.lbl_file = QLabel("")
         self.lbl_file.setWordWrap(True)
+        self.lbl_file.setMinimumHeight(20)
+        self.lbl_file.setStyleSheet("padding: 2px 0;")
         info_layout.addRow("主文件:", self.lbl_file)
         
         info_group.setLayout(info_layout)
@@ -668,17 +684,88 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
                 matchClass = []
         self.edit_matchclass.setText(', '.join(matchClass) if matchClass else '')
         
-        # 加载 HTML 帮助文档
+        # 加载 Markdown 帮助文档
         help_file = self.current_tool_data.get('help_file')
         if help_file:
             help_full = os.path.join(tools_root, help_file.replace('/', os.sep))
             if os.path.exists(help_full):
                 try:
-                    from PySide6.QtCore import QUrl
-                    self.md_preview.setSource(QUrl.fromLocalFile(help_full))
+                    import re
+                    import urllib.parse
+                    
+                    # 读取 Markdown 文件内容
+                    with open(help_full, 'r', encoding='utf-8') as f:
+                        md_content = f.read()
+                    
+                    # 获取 pnghelp 文件夹路径作为图片资源目录
+                    pnghelp_dir = os.path.join(os.path.dirname(__file__), 'pnghelp')
+                    
+                    # 确保目录存在
+                    if not os.path.exists(pnghelp_dir):
+                        print(f"警告: pnghelp 目录不存在: {pnghelp_dir}")
+                        pnghelp_dir = os.path.dirname(__file__)
+                    
+                    # Markdown 转换为 HTML
+                    try:
+                        import markdown
+                        html_content = markdown.markdown(
+                            md_content,
+                            extensions=['tables', 'fenced_code', 'toc']
+                        )
+                    except ImportError:
+                        # 如果没有安装 markdown 库，使用简单的转换
+                        html_content = self._simple_markdown_to_html(md_content)
+                    
+                    # 将 HTML 中的图片路径（仅文件名）转换为 pnghelp 的绝对路径
+                    def replace_image_path(match):
+                        src = match.group(1)
+                        if not src:
+                            return match.group(0)
+                        
+                        # 处理不同类型的路径
+                        if src.startswith(('http://', 'https://', 'data:')):
+                            # 网络图片或数据 URI，保持不变
+                            return match.group(0)
+                        
+                        elif src.startswith('file://'):
+                            # 已经是 file:// URL，保持不变
+                            return match.group(0)
+                        
+                        elif os.path.isabs(src):
+                            # 绝对路径，直接转换为 file:// URL
+                            if not os.path.exists(src):
+                                print(f"警告: 图片文件不存在: {src}")
+                                return f'<img src="" alt="图片不存在">'
+                            img_url = urllib.parse.quote(src.replace('\\', '/'), safe=':/')
+                            return f'<img src="file:///{img_url}" alt="{os.path.basename(src)}">'
+                        
+                        else:
+                            # 相对路径（仅文件名），拼接 pnghelp_dir
+                            img_full_path = os.path.join(pnghelp_dir, src)
+                            
+                            if not os.path.exists(img_full_path):
+                                print(f"警告: 图片文件不存在: {img_full_path}")
+                                return f'<img src="" alt="图片不存在: {src}">'
+                            
+                            # 转换为 file:// URL 格式
+                            img_url = urllib.parse.quote(img_full_path.replace('\\', '/'), safe=':/')
+                            return f'<img src="file:///{img_url}" alt="{src}">'
+                    
+                    # 替换所有图片路径
+                    html_content = re.sub(
+                        r'<img\s+[^>]*src=["\']([^"\']*)["\'][^>]*>',
+                        replace_image_path,
+                        html_content
+                    )
+                    
+                    # 设置 HTML 内容
+                    self.md_preview.setHtml(html_content)
+                    
                     self.lbl_md_status.setText(f"已加载: {os.path.basename(help_full)}")
                 except Exception as e:
                     print(f"加载帮助文档失败: {e}")
+                    import traceback
+                    traceback.print_exc()
                     self.md_preview.setHtml("<h3>帮助文档加载失败</h3>")
             else:
                 self.md_preview.setHtml("<h3>未找到帮助文档</h3>")
@@ -686,6 +773,47 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         else:
             self.md_preview.setHtml("<h3>此工具没有帮助文档</h3>")
             self.lbl_md_status.setText("无帮助文档")
+
+    def _simple_markdown_to_html(self, markdown_text):
+        """简单的 Markdown 转 HTML 转换（不依赖第三方库）"""
+        import re
+        
+        # 处理图片：![alt](path) - 保持原路径，让 base_url 处理
+        html = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', r'<img src="\2" alt="\1" style="max-width:100%; height:auto;">', markdown_text)
+        
+        # 处理链接：[text](url)
+        html = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', html)
+        
+        # 处理标题
+        html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+        html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+        html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+        
+        # 处理粗体和斜体
+        html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
+        html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
+        
+        # 处理代码块
+        html = re.sub(r'`([^`]+)`', r'<code>\1</code>', html)
+        
+        # 处理无序列表
+        html = re.sub(r'^[-*+] (.+)$', r'<li>\1</li>', html, flags=re.MULTILINE)
+        html = re.sub(r'((?:<li>.*</li>\n?)+)', r'<ul>\1</ul>', html)
+        
+        # 处理有序列表
+        html = re.sub(r'^\d+\. (.+)$', r'<li>\1</li>', html, flags=re.MULTILINE)
+        
+        # 处理段落（连续的非空行）
+        paragraphs = re.split(r'\n\n+', html)
+        processed_paragraphs = []
+        for p in paragraphs:
+            p = p.strip()
+            if p and not p.startswith('<'):
+                p = f'<p>{p}</p>'
+            processed_paragraphs.append(p)
+        html = '\n'.join(processed_paragraphs)
+        
+        return html
 
     def rename_tool(self):
         """修改工具名称并同步到实际文件"""
@@ -730,7 +858,7 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
             return
         
         associated_files = []
-        for suffix in ['.json', '.png', '.html']:
+        for suffix in ['.json', '.png', '.md', '.markdown']:
             old_assoc = base_name + suffix
             if os.path.exists(old_assoc):
                 new_assoc = os.path.join(os.path.dirname(old_full_path), new_name + suffix)
