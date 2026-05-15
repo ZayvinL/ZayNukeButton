@@ -36,9 +36,16 @@ def run_show():
     
     if ShowMyFun == True:
         nodesnameslsit, nodesclasslsit = nukendoesget.getcurnodes()
+        
         if nodesclasslsit == []:
-            show_search_window()
+            nodesclasslsit.append("NoSelectedNode")
+            nodesclasslsit.append("AnyTime")
+            clist = ["C=:" + i for i in nodesclasslsit]
+            classlist = ",".join(clist)
+            show_search_window(classlist)
         else:
+            nodesclasslsit.append("AnySelectedNode")
+            nodesclasslsit.append("AnyTime")
             clist = ["C=:" + i for i in nodesclasslsit]
             classlist = ",".join(clist)
             show_search_window(classlist)
