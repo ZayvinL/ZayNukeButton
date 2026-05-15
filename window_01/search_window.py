@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt, QTimer, QEvent, Signal
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QGridLayout, QScrollArea, QLineEdit, QPushButton, 
-    QLabel, QMessageBox, QSlider
+    QLabel, QMessageBox, QSlider, QCheckBox
 )
 from PySide6.QtGui import QKeySequence, QShortcut
 
@@ -195,6 +195,33 @@ class SearchToolWindow(QMainWindow):
         # 搜索框 + 关闭按钮（横向布局）- 不透明背景
         search_layout = QHBoxLayout()
         search_layout.setSpacing(5)
+        
+        # 已安装过滤复选框（默认勾选）
+        self.check_installed_only = QCheckBox("仅已安装")
+        self.check_installed_only.setChecked(True)
+        self.check_installed_only.setStyleSheet("""
+            QCheckBox {
+                color: rgba(220, 230, 240, 200);
+                font-size: 11px;
+                spacing: 5px;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border: 1px solid rgba(80, 100, 120, 150);
+                border-radius: 3px;
+                background-color: rgba(50, 60, 70, 100);
+            }
+            QCheckBox::indicator:checked {
+                background-color: rgba(100, 150, 200, 200);
+                border-color: rgba(100, 150, 200, 200);
+            }
+            QCheckBox::indicator:hover {
+                border-color: rgba(100, 150, 200, 200);
+            }
+        """)
+        self.check_installed_only.stateChanged.connect(self._on_installed_filter_changed)
+        search_layout.addWidget(self.check_installed_only)
         
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("搜索工具... (C=:类, L=:标签, P=:路径, N=:名称)")
@@ -401,16 +428,31 @@ class SearchToolWindow(QMainWindow):
         # 300ms 后执行搜索
         self.search_timer.start(300)
     
+    def _on_installed_filter_changed(self, state):
+        """已安装过滤复选框状态改变"""
+        # 重新执行搜索
+        self._perform_search()
+    
     def _perform_search(self):
         """执行搜索"""
         search_text = self.search_input.text()
         search_params = self._parse_search_text(search_text)
         cache_key = self._search_params_to_key(search_params)
         
+        # 获取是否只搜索已安装工具
+        is_installed_only = self.check_installed_only.isChecked()
+        
+        # 更新缓存键（包含安装过滤状态）
+        cache_key = json.dumps({
+            'search_params': search_params,
+            'is_installed_only': is_installed_only
+        }, sort_keys=True)
+        
         # print(f"\n{'='*60}")
         # print(f"[搜索调试]")
         # print(f"  输入文本: '{search_text}'")
         # print(f"  解析参数: {search_params}")
+        # print(f"  仅已安装: {is_installed_only}")
         # print(f"  缓存键: {cache_key}")
         
         self.current_search_params = search_params
@@ -432,12 +474,13 @@ class SearchToolWindow(QMainWindow):
             return
         
         # 从数据库查询总数量
-        self.total_count = self.db_query.get_total_count(search_params)
-        print(f"  [数据库查询] 总数: {self.total_count}")
+        self.total_count = self.db_query.get_total_count(search_params, is_installed_only)
+        print(f"  [数据库查询] 总数: {self.total_count} (仅已安装: {is_installed_only})")
         
         # 查询初始工具（所有工具）
         self.all_tools = self.db_query.search_tools(
             search_params,
+            is_installed_only=is_installed_only,
             limit=-1,
             offset=0
         )

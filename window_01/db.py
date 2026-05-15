@@ -25,7 +25,7 @@ class FastDBQuery:
                 raise FileNotFoundError(f"数据库文件不存在: {self.db_path}")
         return self._connection
     
-    def search_tools(self, search_params, limit=10, offset=0):
+    def search_tools(self, search_params, is_installed_only=False, limit=10, offset=0):
         """
         搜索工具
         
@@ -36,6 +36,7 @@ class FastDBQuery:
             'names': ['Notepad'],          # N=: 名称
             'keywords': ['test']           # 普通关键词（模糊搜索所有字段）
         }
+        is_installed_only: 是否只搜索已安装的工具
         """
         conn = self._get_connection()
         cursor = conn.cursor()
@@ -43,6 +44,10 @@ class FastDBQuery:
         # 构建查询条件
         conditions = []
         params = []
+        
+        # 是否只搜索已安装的工具
+        if is_installed_only:
+            conditions.append("u.is_installed = 1")
         
         # 类别搜索（精确匹配）
         if search_params.get('classes'):
@@ -129,13 +134,17 @@ class FastDBQuery:
         
         return result
     
-    def get_total_count(self, search_params):
+    def get_total_count(self, search_params, is_installed_only=False):
         """获取搜索结果总数"""
         conn = self._get_connection()
         cursor = conn.cursor()
         
         conditions = []
         params = []
+        
+        # 是否只搜索已安装的工具
+        if is_installed_only:
+            conditions.append("u.is_installed = 1")
         
         if search_params.get('classes'):
             class_conditions = []
