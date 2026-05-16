@@ -2,24 +2,43 @@
 import nuke
 import os
 import codecs
-import window_panel 
-
-
+import importlib
 import nuke
+
+
+
+import window_panel 
 import toaddpanel
 import settool
 import export_panel
 
 
- 
+
+
 # ---------------------------------------------------------
-toaddpanel.run_show_funa
-bar = nuke.menu('Nodes')
-toolbar = bar.addMenu("ZayvinTools")
-toolbar.addCommand('Button', window_panel.run_show,"A",shortcutContext=2)
-toolbar.addCommand('Export as BTL', export_panel.run_show)
+#toaddpanel.run_show_funa
 
 
+def make_menu():  
+    bar = nuke.menu('Nodes')
+    toolbar = bar.addMenu("ZayvinTools")
+    toolbar.addCommand('MyButton', window_panel.run_show,"A",shortcutContext=2)
+    toolbar.addCommand('Export', export_panel.run_show)
+    toolbar.addCommand('Install', toaddpanel.run_show_funa)
+    toolbar.addCommand('Refresh hotkey', reloadhotkey)
+
+
+    
+
+def reloadhotkey():
+    try:
+        import window_panel 
+        importlib.reload(window_panel)
+        make_menu()
+    except:
+        print("Error: Failed to reload hotkey")
+
+make_menu()
 # ---------------------------------------------------------
 
 

@@ -1,5 +1,6 @@
 import settool
 import nukescripts
+import nuke
 
 nukepgetsear3 = nukescripts.panels.registerWidgetAsPanel("settool.ToolManagerApp","安装工具","QZDFlixuaiobo.settool.ToolManagerApp_ver30",True)
 
