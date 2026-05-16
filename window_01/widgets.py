@@ -85,13 +85,13 @@ class ToolButton(QWidget):
     def _update_style(self):
         """更新样式"""
         if self._is_hovered:
-            bg_color = "rgba(50, 60, 70, 255)"
-            border_color = "rgba(100, 130, 160, 250)"
-            text_color = "rgba(255, 200, 100, 255)"
+            bg_color = "rgba(45, 45, 45, 255)"
+            border_color = "rgba(200, 50, 80, 255)"
+            text_color = "rgba(230, 220, 200, 255)"
         else:
-            bg_color = "rgba(50, 60, 70, 100)"
-            border_color = "rgba(80, 100, 120, 150)"
-            text_color = "rgba(200, 210, 220, 255)"
+            bg_color = "rgba(35, 35, 35, 170)"
+            border_color = "rgba(150, 200, 255, 200)"
+            text_color = "rgba(230, 210, 180, 255)"
         
         self.setStyleSheet(f"""
             QWidget {{
@@ -101,7 +101,7 @@ class ToolButton(QWidget):
             }}
             QLabel {{
                 color: {text_color};
-                font-size: 11px;
+                font-size: 13px;
                 background-color: {bg_color};
             }}
         """)

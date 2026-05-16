@@ -47,7 +47,7 @@ class SearchToolWindow(QMainWindow):
         
         # 透明度参数（0-255，0=完全透明，255=完全不透明）
         self.button_bg_alpha = 10  # 按钮区域背景透明度
-        self.search_bg_alpha = 100  # 搜索框背景透明度（与按钮区域一致）
+        self.search_bg_alpha = 30  # 搜索框背景透明度（与按钮区域一致）
         
         # 虚拟列表参数
         self.visible_rows = 3  # 可见行数
@@ -154,15 +154,18 @@ class SearchToolWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         
-        # 创建四个拖拽标签（50% 透明度）
-        drag_alpha = 150  # 50% 透明度
+        # 创建四个拖拽标签（低调深灰色）
+        drag_alpha = 128
+        dragcolor1 = 20
+        dragcolor2 = 23
+        dragcolor3 = 20
         
         # 上边框
         self.drag_top = QLabel()
         self.drag_top.setMinimumHeight(2)
         self.drag_top.setStyleSheet(f"""
             QLabel {{
-                background-color: rgba(50, 60, 70, {drag_alpha});
+                background-color: rgba({dragcolor1}, {dragcolor2}, {dragcolor3}, {drag_alpha});
             }}
         """)
         self.drag_top.installEventFilter(self)
@@ -172,7 +175,7 @@ class SearchToolWindow(QMainWindow):
         self.drag_bottom.setMinimumHeight(2)
         self.drag_bottom.setStyleSheet(f"""
             QLabel {{
-                background-color: rgba(50, 60, 70, {drag_alpha});
+                background-color: rgba({dragcolor1}, {dragcolor2}, {dragcolor3}, {drag_alpha});
             }}
         """)
         self.drag_bottom.installEventFilter(self)
@@ -182,7 +185,7 @@ class SearchToolWindow(QMainWindow):
         self.drag_left.setMinimumWidth(5)
         self.drag_left.setStyleSheet(f"""
             QLabel {{
-                background-color: rgba(50, 60, 70, {drag_alpha});
+                background-color: rgba({dragcolor1}, {dragcolor2}, {dragcolor3}, {drag_alpha});
             }}
         """)
         self.drag_left.installEventFilter(self)
@@ -192,7 +195,7 @@ class SearchToolWindow(QMainWindow):
         self.drag_right.setMinimumWidth(5)
         self.drag_right.setStyleSheet(f"""
             QLabel {{
-                background-color: rgba(50, 60, 70, {drag_alpha});
+                background-color: rgba({dragcolor1}, {dragcolor2}, {dragcolor3}, {drag_alpha});
             }}
         """)
         self.drag_right.installEventFilter(self)
@@ -209,32 +212,32 @@ class SearchToolWindow(QMainWindow):
         content_layout.setContentsMargins(1, 1, 1, 1)
         content_layout.setSpacing(1)
         
-        # 搜索框 + 关闭按钮（横向布局）- 不透明背景
+        # 搜索框 + 关闭按钮（横向布局）
         search_layout = QHBoxLayout()
         search_layout.setSpacing(5)
         
-        # 已安装过滤复选框（默认勾选）
+        # 已安装过滤复选框
         self.check_installed_only = QCheckBox("仅已安装")
         self.check_installed_only.setChecked(True)
         self.check_installed_only.setStyleSheet("""
             QCheckBox {
-                color: rgba(220, 230, 240, 200);
+                color: rgba(255, 230, 200, 220);
                 font-size: 11px;
                 spacing: 5px;
             }
             QCheckBox::indicator {
                 width: 16px;
                 height: 16px;
-                border: 1px solid rgba(80, 100, 120, 150);
+                border: 2px solid rgba(255, 140, 50, 180);
                 border-radius: 3px;
-                background-color: rgba(50, 60, 70, 100);
+                background-color: rgba(30, 30, 30, 150);
             }
             QCheckBox::indicator:checked {
-                background-color: rgba(100, 150, 200, 200);
-                border-color: rgba(100, 150, 200, 200);
+                background-color: rgba(255, 140, 50, 200);
+                border-color: rgba(255, 160, 80, 220);
             }
             QCheckBox::indicator:hover {
-                border-color: rgba(100, 150, 200, 200);
+                border-color: rgba(255, 180, 100, 220);
             }
         """)
         self.check_installed_only.stateChanged.connect(self._on_installed_filter_changed)
@@ -246,25 +249,29 @@ class SearchToolWindow(QMainWindow):
             QLineEdit {{
                 padding: 8px 12px;
                 font-size: 12px;
-                background-color: rgba(50, 60, 70, {self.search_bg_alpha});
-                color: rgba(220, 230, 240, 255);
-                border: 1px solid rgba(80, 100, 120, 150);
+                background-color: rgba(30, 30, 30, {self.search_bg_alpha});
+                color: rgba(255, 230, 200, 255);
+                border: 1px solid rgba(255, 140, 50, 150);
                 border-radius: 3px;
             }}
             QLineEdit:focus {{
-                border-color: rgba(100, 150, 200, 200);
+                border-color: rgba(255, 160, 80, 220);
+                background-color: rgba(35, 35, 35, {self.search_bg_alpha});
+            }}
+            QLineEdit::placeholder {{
+                color: rgba(180, 170, 160, 150);
             }}
         """)
         self.search_input.textChanged.connect(self._on_search_changed)
         search_layout.addWidget(self.search_input)
         
-        # 关闭按钮（宽度与滑块一致，18px）
+        # 关闭按钮
         close_btn = QPushButton("×")
         close_btn.setFixedSize(18, 30)
         close_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: rgba(200, 60, 60, {self.search_bg_alpha});
-                color: white;
+                background-color: rgba(255, 80, 50, {self.search_bg_alpha});
+                color: rgba(255, 255, 255, 255);
                 border: none;
                 border-radius: 3px;
                 font-size: 18px;
@@ -272,7 +279,7 @@ class SearchToolWindow(QMainWindow):
                 padding: 0px;
             }}
             QPushButton:hover {{
-                background-color: rgba(220, 80, 80, {self.search_bg_alpha});
+                background-color: rgba(255, 100, 70, {self.search_bg_alpha});
             }}
         """)
         close_btn.clicked.connect(self.refresh_status)
@@ -285,16 +292,16 @@ class SearchToolWindow(QMainWindow):
         content_hlayout.setContentsMargins(0, 0, 0, 0)
         content_hlayout.setSpacing(5)
         
-        # 左侧：按钮网格区域 - 半透明背景
+        # 左侧：按钮网格区域
         self.grid_container = QWidget()
         self.grid_layout = QGridLayout(self.grid_container)
         self.grid_layout.setContentsMargins(self.grid_margins, self.grid_margins, self.grid_margins, self.grid_margins)
         self.grid_layout.setSpacing(self.grid_spacing)
         
-        # 设置按钮区域背景透明度
+        # 设置按钮区域背景
         self.grid_container.setStyleSheet(f"""
             QWidget {{
-                background-color: rgba(50, 60, 70, {self.button_bg_alpha});
+                background-color: rgba(30, 30, 30, {self.button_bg_alpha});
                 border-radius: 5px;
             }}
         """)
@@ -321,24 +328,24 @@ class SearchToolWindow(QMainWindow):
         
         self.slider.setStyleSheet(f"""
             QSlider {{
-                background-color: rgba(50, 60, 70, {self.search_bg_alpha});
+                background-color: rgba(30, 30, 30, {self.search_bg_alpha});
                 border: none;
                 border-radius: 5px;
                 width: 18px;
             }}
             QSlider::groove:vertical {{
-                background: rgba(50, 60, 70, {self.search_bg_alpha});
+                background: rgba(30, 30, 30, {self.search_bg_alpha});
                 width: 18px;
                 border-radius: 5px;
             }}
             QSlider::handle:vertical {{
-                background: rgba(100, 150, 200, {int(self.search_bg_alpha * 1.5)});
+                background: rgba(255, 140, 50, {min(255, int(self.search_bg_alpha * 2.5))});
                 height: 30px;
                 border-radius: 5px;
                 margin: 0px -1px;
             }}
             QSlider::handle:vertical:hover {{
-                background: rgba(120, 170, 220, {min(255, int(self.search_bg_alpha * 1.8))});
+                background: rgba(255, 160, 80, {min(255, int(self.search_bg_alpha * 3))});
             }}
             QSlider::add-page:vertical, QSlider::sub-page:vertical {{
                 background: transparent;
