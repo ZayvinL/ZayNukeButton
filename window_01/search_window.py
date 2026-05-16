@@ -34,7 +34,7 @@ class SearchToolWindow(QMainWindow):
         self.toolbox_path = toolbox_path
         self.initial_search_text = initial_search_text
         self.is_visible = False  # 使用实例属性存储状态
-        self.ShowP = False  # 控制是否在显示时重新定位到鼠标位置
+        self.ShowP = True  # 控制是否在显示时重新定位到鼠标位置
         
         # 布局参数配置（可调整）
         self.tools_per_row = 5  # 每行显示数量
@@ -46,8 +46,8 @@ class SearchToolWindow(QMainWindow):
         self.grid_margins = 1 # 网格边距（可调整）
         
         # 透明度参数（0-255，0=完全透明，255=完全不透明）
-        self.button_bg_alpha = 50  # 按钮区域背景透明度
-        self.search_bg_alpha = 50  # 搜索框背景透明度（与按钮区域一致）
+        self.button_bg_alpha = 10  # 按钮区域背景透明度
+        self.search_bg_alpha = 100  # 搜索框背景透明度（与按钮区域一致）
         
         # 虚拟列表参数
         self.visible_rows = 3  # 可见行数
@@ -127,7 +127,7 @@ class SearchToolWindow(QMainWindow):
         if self.ShowP:
             cursor_pos = QCursor.pos()
             # 将窗口移动到鼠标位置（窗口左上角对齐鼠标）
-            self.move(cursor_pos.x()-50, cursor_pos.y()-150)
+            self.move(cursor_pos.x()-150, cursor_pos.y()-100)
             # print(f"窗口已移动到鼠标位置: ({cursor_pos.x()}, {cursor_pos.y()})")
         
         super().showEvent(event)
@@ -155,11 +155,11 @@ class SearchToolWindow(QMainWindow):
         main_layout.setSpacing(0)
         
         # 创建四个拖拽标签（50% 透明度）
-        drag_alpha = 128  # 50% 透明度
+        drag_alpha = 150  # 50% 透明度
         
         # 上边框
         self.drag_top = QLabel()
-        self.drag_top.setMinimumHeight(10)
+        self.drag_top.setMinimumHeight(2)
         self.drag_top.setStyleSheet(f"""
             QLabel {{
                 background-color: rgba(50, 60, 70, {drag_alpha});
@@ -169,7 +169,7 @@ class SearchToolWindow(QMainWindow):
         
         # 下边框
         self.drag_bottom = QLabel()
-        self.drag_bottom.setMinimumHeight(10)
+        self.drag_bottom.setMinimumHeight(2)
         self.drag_bottom.setStyleSheet(f"""
             QLabel {{
                 background-color: rgba(50, 60, 70, {drag_alpha});
@@ -179,7 +179,7 @@ class SearchToolWindow(QMainWindow):
         
         # 左边框
         self.drag_left = QLabel()
-        self.drag_left.setMinimumWidth(10)
+        self.drag_left.setMinimumWidth(5)
         self.drag_left.setStyleSheet(f"""
             QLabel {{
                 background-color: rgba(50, 60, 70, {drag_alpha});
@@ -189,7 +189,7 @@ class SearchToolWindow(QMainWindow):
         
         # 右边框
         self.drag_right = QLabel()
-        self.drag_right.setMinimumWidth(10)
+        self.drag_right.setMinimumWidth(5)
         self.drag_right.setStyleSheet(f"""
             QLabel {{
                 background-color: rgba(50, 60, 70, {drag_alpha});
@@ -592,6 +592,7 @@ class SearchToolWindow(QMainWindow):
                 btn.setVisible(True)
             else:
                 btn.setVisible(False)
+                btn.tool_data = None  # 清空工具数据
     
     def _create_button_slots(self):
         """创建固定的按钮槽位（虚拟列表）"""
@@ -627,6 +628,9 @@ class SearchToolWindow(QMainWindow):
         grid_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing
         grid_height = self.visible_rows * self.button_height + (self.visible_rows + 1) * self.grid_spacing
         self.grid_container.setFixedSize(grid_width, grid_height)
+        
+        # 设置 grid_layout 的对齐方式为左上角对齐，不居中
+        self.grid_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
     
     def _update_stats(self):
         """更新统计信息"""
