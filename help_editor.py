@@ -1,8 +1,9 @@
 import shutil
 import os
 import re
-from PySide6.QtWidgets import (QFileDialog, QMessageBox)
-from PySide6.QtCore import QUrl, Qt
+# from PySide6.QtWidgets import (QFileDialog, QMessageBox)
+# from PySide6.QtCore import QUrl, Qt
+from qt_imports import QFileDialog, QMessageBox, QUrl, Qt
 import paths_setup as psp
 
 class HelpEditorMixin:

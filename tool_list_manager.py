@@ -5,8 +5,9 @@
 
 import sqlite3
 import json
-from PySide6.QtWidgets import QListWidgetItem, QMessageBox
-from PySide6.QtCore import Qt
+# from PySide6.QtWidgets import QListWidgetItem, QMessageBox
+# from PySide6.QtCore import Qt
+from qt_imports import QListWidgetItem, QMessageBox, Qt
 from widgets import ToolItemWidget
 
 

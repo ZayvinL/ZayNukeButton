@@ -75,7 +75,8 @@ def get_window_instance():
 # 测试入口
 if __name__ == "__main__":
     import sys
-    from PySide6.QtWidgets import QApplication
+    # from PySide6.QtWidgets import QApplication
+    from qt_imports import QApplication
     
     app = QApplication(sys.argv)
     show_search_window()

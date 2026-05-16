@@ -6,9 +6,11 @@
 import sqlite3
 import json
 import os
-from PySide6.QtWidgets import QMessageBox
-from PySide6.QtGui import QClipboard, QImage, QPixmap
-from PySide6.QtCore import Qt
+# from PySide6.QtWidgets import QMessageBox
+# from PySide6.QtGui import QClipboard, QImage, QPixmap
+# from PySide6.QtCore import Qt
+# from PySide6.QtWidgets import QApplication
+from qt_imports import QMessageBox, QClipboard, QImage, QPixmap, Qt, QApplication
 
 
 class IconManager:
@@ -63,7 +65,7 @@ class IconManager:
     
     def get_icon_from_clipboard(self):
         """从剪贴板获取图片"""
-        from PySide6.QtWidgets import QApplication
+        
         
         clipboard = QApplication.clipboard()
         mime_data = clipboard.mimeData()

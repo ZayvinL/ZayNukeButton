@@ -1,8 +1,10 @@
 
 import os
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QCheckBox
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPixmap
+# from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QCheckBox
+# from PySide6.QtCore import Qt, Signal
+# from PySide6.QtGui import QPixmap
+
+from qt_imports import QWidget, QHBoxLayout, QLabel, QCheckBox, Qt, Signal, QPixmap
 
 import paths_setup as psp
 

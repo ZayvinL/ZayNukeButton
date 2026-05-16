@@ -2,14 +2,22 @@
 UI 构建器 - 负责创建和配置所有 UI 组件
 """
 
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget, 
-                               QLabel, QPushButton, QLineEdit, QSplitter, 
-                               QCheckBox, QGroupBox, QFormLayout, QTabWidget,
-                               QTextEdit, QTextBrowser, QScrollArea, QSizePolicy, QComboBox)
-from PySide6.QtCore import Qt
-from PySide6 import QtWidgets
-from PySide6.QtGui import QFont
+# from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget, 
+#                                QLabel, QPushButton, QLineEdit, QSplitter, 
+#                                QCheckBox, QGroupBox, QFormLayout, QTabWidget,
+#                                QTextEdit, QTextBrowser, QScrollArea, QSizePolicy, QComboBox)
+# from PySide6.QtCore import Qt
+# from PySide6 import QtWidgets
+# from PySide6.QtGui import QFont
+# from PySide6.QtWidgets import QTextBrowser
+# from PySide6.QtGui import QFont
 
+from qt_imports import (QWidget, QVBoxLayout, QHBoxLayout,
+                        QListWidget, QLabel, QPushButton, 
+                        QLineEdit, QSplitter, QCheckBox, 
+                        QGroupBox, QFormLayout, QTabWidget,
+                        QTextEdit, QTextBrowser, QScrollArea, 
+                        QSizePolicy, QComboBox, Qt, QtWidgets, QFont)
 
 class UIBuilder:
     """UI 组件构建器"""
@@ -197,8 +205,7 @@ class UIBuilder:
     
     def _create_json_tab(self):
         """创建 JSON 标签页"""
-        from PySide6.QtWidgets import QTextBrowser
-        from PySide6.QtGui import QFont
+        
         
         json_widget = QWidget()
         json_layout = QVBoxLayout(json_widget)

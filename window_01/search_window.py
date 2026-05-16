@@ -7,13 +7,19 @@ import json
 import sys
 import nuke
 
-from PySide6.QtCore import Qt, QTimer, QEvent, Signal
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-    QGridLayout, QScrollArea, QLineEdit, QPushButton, 
-    QLabel, QMessageBox, QSlider, QCheckBox
-)
-from PySide6.QtGui import QKeySequence, QShortcut, QCursor
+# from PySide6.QtCore import Qt, QTimer, QEvent, Signal
+# from PySide6.QtWidgets import (
+#     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+#     QGridLayout, QScrollArea, QLineEdit, QPushButton, 
+#     QLabel, QMessageBox, QSlider, QCheckBox
+# )
+# from PySide6.QtGui import QKeySequence, QShortcut, QCursor
+
+from qt_imports import (Qt, QTimer, QEvent, Signal, 
+                        QMainWindow, QWidget, QVBoxLayout, 
+                        QHBoxLayout, QGridLayout, QScrollArea, 
+                        QLineEdit, QPushButton, QLabel, QMessageBox, 
+                        QSlider, QCheckBox, QKeySequence, QShortcut, QCursor)
 
 from window_01.config import _get_user_db_path, _get_toolbox_path
 from window_01.db import FastDBQuery, IconCache, SmartCache

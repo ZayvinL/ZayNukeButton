@@ -5,9 +5,10 @@
 import os
 import sqlite3
 
-from PySide6.QtCore import QSize
-from PySide6.QtGui import QIcon, QPixmap, Qt
+# from PySide6.QtCore import QSize
+# from PySide6.QtGui import QIcon, QPixmap, Qt
 
+from qt_imports import QSize, QIcon, QPixmap, Qt
 
 class FastDBQuery:
     """快速数据库查询器"""

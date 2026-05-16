@@ -8,10 +8,11 @@ libs_path = os.path.join(os.path.dirname(__file__), 'libs')
 if os.path.exists(libs_path):
     sys.path.insert(0, libs_path)
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox
-from PySide6.QtCore import Qt
+# from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QMessageBox
+# from PySide6.QtCore import Qt
 
 import paths_setup as psp
+from qt_imports import QApplication, QMainWindow, QWidget, QMessageBox, Qt, QSplitter
 import sqlite_file_setup as sfs
 
 # 导入拆分后的模块
@@ -82,7 +83,6 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         main_layout.addLayout(top_bar)
         
         # 主分割器
-        from PySide6.QtWidgets import QSplitter
         splitter = QSplitter(Qt.Orientation.Horizontal)
         
         # 左侧面板

@@ -1,5 +1,6 @@
 import sys
-from PySide6.QtWidgets import QApplication
+# from PySide6.QtWidgets import QApplication
+from qt_imports import QApplication
 
 from window_01 import set_show_at_mouse,show_search_window, hide_search_window, get_window_instance, is_window_visible
 import nukendoesget
