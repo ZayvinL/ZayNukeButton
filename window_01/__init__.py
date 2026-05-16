@@ -38,6 +38,15 @@ def is_window_visible():
         return getattr(_search_window_instance, 'is_visible', False)
     return False
 
+def set_show_at_mouse(show_p: bool):
+    """设置是否在显示时重新定位到鼠标位置
+    
+    Args:
+        show_p: True=每次显示时定位到鼠标位置，False=保持上次位置
+    """
+    if _search_window_instance:
+        _search_window_instance.set_show_at_mouse(show_p)
+
 def show_search_window(initial_search_text=""):
     """显示搜索窗口"""
     # 如果是第一次显示，创建窗口

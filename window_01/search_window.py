@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QGridLayout, QScrollArea, QLineEdit, QPushButton, 
     QLabel, QMessageBox, QSlider, QCheckBox
 )
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QKeySequence, QShortcut, QCursor
 
 from window_01.config import _get_user_db_path, _get_toolbox_path
 from window_01.db import FastDBQuery, IconCache, SmartCache
@@ -34,6 +34,7 @@ class SearchToolWindow(QMainWindow):
         self.toolbox_path = toolbox_path
         self.initial_search_text = initial_search_text
         self.is_visible = False  # 使用实例属性存储状态
+        self.ShowP = False  # 控制是否在显示时重新定位到鼠标位置
         
         # 布局参数配置（可调整）
         self.tools_per_row = 5  # 每行显示数量
@@ -98,6 +99,14 @@ class SearchToolWindow(QMainWindow):
         QTimer.singleShot(100, self._load_initial_data)
         QTimer.singleShot(200, self._apply_initial_search)
     
+    def set_show_at_mouse(self, show_p: bool):
+        """设置是否在显示时重新定位到鼠标位置
+        
+        Args:
+            show_p: True=每次显示时定位到鼠标位置，False=保持上次位置
+        """
+        self.ShowP = show_p
+    
     def _apply_initial_search(self):
         """应用初始搜索文本（已合并到 _load_initial_data，此方法保留但不执行）"""
         pass
@@ -113,6 +122,14 @@ class SearchToolWindow(QMainWindow):
         """窗口显示时设置状态"""
         self.is_visible = True
         print(f"窗口显示，is_visible={self.is_visible}")
+        
+        # 如果 ShowP 为 True，重新定位到鼠标位置
+        if self.ShowP:
+            cursor_pos = QCursor.pos()
+            # 将窗口移动到鼠标位置（窗口左上角对齐鼠标）
+            self.move(cursor_pos.x(), cursor_pos.y())
+            print(f"窗口已移动到鼠标位置: ({cursor_pos.x()}, {cursor_pos.y()})")
+        
         super().showEvent(event)
     
     def hideEvent(self, event):
@@ -655,9 +672,7 @@ class SearchToolWindow(QMainWindow):
         else:
             print(f"   无图标")
         
-
-        
-        
+    
     
     def closeEvent(self, event):
         self.db_query.close()

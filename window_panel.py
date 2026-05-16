@@ -1,25 +1,11 @@
 import sys
 from PySide6.QtWidgets import QApplication
 
-from window_01 import show_search_window, hide_search_window, get_window_instance, is_window_visible
+from window_01 import set_show_at_mouse,show_search_window, hide_search_window, get_window_instance, is_window_visible
 import nukendoesget
 
-def run_show():
-    # 使用窗口实例的状态，而不是全局变量
-    if not is_window_visible():
-        # 显示窗口
-        nodesnameslsit, nodesclasslsit = nukendoesget.getcurnodes()
-        if nodesclasslsit == []:
-            show_search_window()
-        else:
-            clist = ["C=:" + i for i in nodesclasslsit]
-            classlist = ",".join(clist)
-            show_search_window(classlist)
-        print("窗口已打开")
-    else:
-        # 隐藏窗口
-        hide_search_window()
-        print("窗口已关闭")
+# 启用：每次显示时定位到鼠标位置
+set_show_at_mouse(True)
 
 # 全局状态
 ShowMyFun = True
