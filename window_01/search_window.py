@@ -7,6 +7,7 @@ import json
 import sys
 import nuke
 
+
 # from PySide6.QtCore import Qt, QTimer, QEvent, Signal
 # from PySide6.QtWidgets import (
 #     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
@@ -283,6 +284,29 @@ class SearchToolWindow(QMainWindow):
         self.search_input.textChanged.connect(self._on_search_changed)
         search_layout.addWidget(self.search_input)
         
+        
+        
+        # 刷新按钮（清空缓存）
+        refresh_btn = QPushButton("⟳")
+        refresh_btn.setFixedSize(24, 30)
+        refresh_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: rgba(255, 140, 50, {self.search_bg_alpha});
+                color: rgba(255, 255, 255, 255);
+                border: none;
+                border-radius: 3px;
+                font-size: 16px;
+                font-weight: bold;
+                padding: 0px;
+            }}
+            QPushButton:hover {{
+                background-color: rgba(255, 160, 80, {min(255, int(self.search_bg_alpha * 1.5))});
+            }}
+        """)
+        refresh_btn.clicked.connect(self._refresh_cache)
+        refresh_btn.setToolTip("清空缓存并重新搜索")
+        search_layout.addWidget(refresh_btn)
+        
         # 关闭按钮
         close_btn = QPushButton("×")
         close_btn.setFixedSize(18, 30)
@@ -474,6 +498,15 @@ class SearchToolWindow(QMainWindow):
     def _on_installed_filter_changed(self, state):
         """已安装过滤复选框状态改变"""
         # 重新执行搜索
+        self._perform_search()
+    
+    def _refresh_cache(self):
+        """清空缓存并重新搜索"""
+        # 清空智能缓存
+        self.smart_cache.clear()
+        print(f"[缓存刷新] 已清空 {len(self.smart_cache._cache)} 个缓存项")
+        
+        # 重新执行当前搜索
         self._perform_search()
     
     def _perform_search(self):
