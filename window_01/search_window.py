@@ -166,6 +166,7 @@ class SearchToolWindow(QMainWindow):
         self.drag_top.setStyleSheet(f"""
             QLabel {{
                 background-color: rgba({dragcolor1}, {dragcolor2}, {dragcolor3}, {drag_alpha});
+                border-radius: 30px;
             }}
         """)
         self.drag_top.installEventFilter(self)
@@ -176,6 +177,7 @@ class SearchToolWindow(QMainWindow):
         self.drag_bottom.setStyleSheet(f"""
             QLabel {{
                 background-color: rgba({dragcolor1}, {dragcolor2}, {dragcolor3}, {drag_alpha});
+                border-radius: 5px;
             }}
         """)
         self.drag_bottom.installEventFilter(self)
@@ -186,6 +188,7 @@ class SearchToolWindow(QMainWindow):
         self.drag_left.setStyleSheet(f"""
             QLabel {{
                 background-color: rgba({dragcolor1}, {dragcolor2}, {dragcolor3}, {drag_alpha});
+                border-radius: 5px;
             }}
         """)
         self.drag_left.installEventFilter(self)
@@ -196,6 +199,7 @@ class SearchToolWindow(QMainWindow):
         self.drag_right.setStyleSheet(f"""
             QLabel {{
                 background-color: rgba({dragcolor1}, {dragcolor2}, {dragcolor3}, {drag_alpha});
+                border-radius: 5px;
             }}
         """)
         self.drag_right.installEventFilter(self)
@@ -211,6 +215,14 @@ class SearchToolWindow(QMainWindow):
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(1, 1, 1, 1)
         content_layout.setSpacing(1)
+        
+        # 设置内容区域圆角
+        content_widget.setStyleSheet("""
+            QWidget {
+                background-color: transparent;
+                border-radius: 30px;
+            }
+        """)
         
         # 搜索框 + 关闭按钮（横向布局）
         search_layout = QHBoxLayout()
@@ -364,6 +376,7 @@ class SearchToolWindow(QMainWindow):
         central_widget.setStyleSheet("""
             QWidget {
                 background-color: transparent;
+                border-radius: 5px;
             }
         """)
     
