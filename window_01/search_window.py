@@ -127,8 +127,8 @@ class SearchToolWindow(QMainWindow):
         if self.ShowP:
             cursor_pos = QCursor.pos()
             # 将窗口移动到鼠标位置（窗口左上角对齐鼠标）
-            self.move(cursor_pos.x(), cursor_pos.y())
-            print(f"窗口已移动到鼠标位置: ({cursor_pos.x()}, {cursor_pos.y()})")
+            self.move(cursor_pos.x()-50, cursor_pos.y()-150)
+            # print(f"窗口已移动到鼠标位置: ({cursor_pos.x()}, {cursor_pos.y()})")
         
         super().showEvent(event)
     

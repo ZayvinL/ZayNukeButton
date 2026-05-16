@@ -4,8 +4,7 @@ from PySide6.QtWidgets import QApplication
 from window_01 import set_show_at_mouse,show_search_window, hide_search_window, get_window_instance, is_window_visible
 import nukendoesget
 
-# 启用：每次显示时定位到鼠标位置
-set_show_at_mouse(True)
+
 
 # 全局状态
 ShowMyFun = True
@@ -22,12 +21,15 @@ def run_show():
     
     if ShowMyFun == True:
         nodesnameslsit, nodesclasslsit = nukendoesget.getcurnodes()
-        
+        # 启用：每次显示时定位到鼠标位置
+        set_show_at_mouse(True)
         if nodesclasslsit == []:
             nodesclasslsit.append("NoSelectedNode")
             nodesclasslsit.append("AnyTime")
             clist = ["C=:" + i for i in nodesclasslsit]
             classlist = ",".join(clist)
+
+            
             show_search_window(classlist)
         else:
             nodesclasslsit.append("AnySelectedNode")
