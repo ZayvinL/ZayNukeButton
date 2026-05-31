@@ -35,40 +35,54 @@ class SearchToolWindow(QMainWindow):
     # 定义窗口隐藏信号
     window_hidden = Signal()
     
+    @staticmethod
+    def _scale_factor():
+        """获取当前主屏幕的 DPI 缩放系数（以 96 DPI 为基准 1.0，上限 1.2）"""
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return 1.0
+        raw = screen.logicalDotsPerInch() / 96.0
+        return min(raw, 1.2)
+
     def __init__(self, toolbox_path, parent=None, initial_search_text=""):
         super().__init__(parent)
         self.setWindowTitle(" 工具搜索")
-        
+
         self.toolbox_path = toolbox_path
         self.initial_search_text = initial_search_text
         self.is_visible = False  # 使用实例属性存储状态
         self.ShowP = True  # 控制是否在显示时重新定位到鼠标位置
-        
+
+        s = self._scale_factor() * 0.8
+
         # 布局参数配置（可调整）
         self.tools_per_row = 5  # 每行显示数量
         self.beishu = 3  # 倍数
         self.page_size = self.tools_per_row * self.beishu  # 每次加载数量（3的倍数）
-        self.button_width = 150  # 按钮固定宽度（可调整）
-        self.button_height = 80  # 按钮固定高度（可调整）
-        self.grid_spacing = 1  # 按钮间距（可调整）
-        self.grid_margins = 1 # 网格边距（可调整）
-        
+        self.button_width = int(150 * s)  # 按钮固定宽度（按 DPI 缩放）
+        self.button_height = int(80 * s)  # 按钮固定高度（按 DPI 缩放）
+        self.grid_spacing = max(1, int(1 * s))  # 按钮间距
+        self.grid_margins = max(1, int(1 * s))  # 网格边距
+
         # 透明度参数（0-255，0=完全透明，255=完全不透明）
         self.button_bg_alpha = 10  # 按钮区域背景透明度
         self.search_bg_alpha = 30  # 搜索框背景透明度（与按钮区域一致）
-        
+
         # 虚拟列表参数
         self.visible_rows = 3  # 可见行数
         self.buffer_rows = 2  # 缓冲行数（上下各留）
         self.total_button_slots = (self.visible_rows + self.buffer_rows * 2) * self.tools_per_row  # 总按钮槽位
-        
-        # 计算窗口尺寸
-        window_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing + 30
+
+        # 计算窗口尺寸（固定偏移量也跟随缩放）
+        pad_x = int(30 * s)
+        search_h = int(70 * s)  # 搜索框区域高度
+        bottom_pad = int(20 * s)
+
+        window_width = self.tools_per_row * self.button_width + (self.tools_per_row + 1) * self.grid_spacing + pad_x
         button_area_height = self.visible_rows * self.button_height + (self.visible_rows + 1) * self.grid_spacing
-        window_height = 35 + 35 + button_area_height + 20
-        
-        self.setMinimumSize(window_width, window_height)
-        self.setMaximumSize(window_width + 50, 700)
+        window_height = search_h + button_area_height + bottom_pad
+
+        self.setFixedSize(window_width, window_height)
         
         try:
             db_path = _get_user_db_path()
