@@ -6,8 +6,6 @@ import subprocess
 
 from pathlib import Path
 
-import Pathsetup
-
 
 def set_recursive_777(folder_path):
     """
@@ -100,31 +98,4 @@ def find_all_json_files(root_dir):
     return [str(file) for file in json_files]
 
 
-def quanxianseting():
-    # 导出文件时候设置单个文件的权限
-    target_dir = Pathsetup.ToolboxSettings_path()
-    json_files = find_all_json_files(target_dir)
-    for i in json_files:
-        try:
-            set_json_permissions(i)
-        except:
-            print(f"修改权限失败{i}")
 
-
-def quanxianallchanged():
-    # 尝试修改全部的文件权限
-    root_path = Pathsetup.ToolboxSettings_path()
-    
-    # 使用os.walk遍历目录
-    for dirpath, dirnames, filenames in os.walk(root_path):
-        if "#" not in dirpath:
-            if sys.platform.startswith('linux'):
-                try:
-                    set_recursive_777(dirpath)
-                except:
-                    pass
-            else:
-                try:
-                    set_json_permissions(dirpath)
-                except:
-                    pass

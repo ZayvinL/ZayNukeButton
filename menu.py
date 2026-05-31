@@ -21,11 +21,11 @@ import export_panel
 
 def make_menu():  
     bar = nuke.menu('Nodes')
-    toolbar = bar.addMenu("ZayvinTools")
-    toolbar.addCommand('MyButton', window_panel.run_show,"A",shortcutContext=2)
-    toolbar.addCommand('Export', export_panel.run_show)
-    toolbar.addCommand('Install', toaddpanel.run_show_funa)
-    toolbar.addCommand('Refresh hotkey', reloadhotkey)
+    toolbar = bar.addMenu("Z")
+    toolbar.addCommand('Button/MyButton', window_panel.run_show,"A",shortcutContext=2)
+    toolbar.addCommand('Button/Export', export_panel.run_show)
+    toolbar.addCommand('Button/Install', toaddpanel.run_show_funa)
+    toolbar.addCommand('Button/Refresh hotkey', reloadhotkey)
 
 
     
