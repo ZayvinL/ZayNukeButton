@@ -16,11 +16,12 @@ import nuke
 # )
 # from PySide6.QtGui import QKeySequence, QShortcut, QCursor
 
-from qt_imports import (Qt, QTimer, QEvent, Signal, 
-                        QMainWindow, QWidget, QVBoxLayout, 
-                        QHBoxLayout, QGridLayout, QScrollArea, 
-                        QLineEdit, QPushButton, QLabel, QMessageBox, 
-                        QSlider, QCheckBox, QKeySequence, QShortcut, QCursor)
+from qt_imports import (Qt, QTimer, QEvent, Signal,
+                        QMainWindow, QWidget, QVBoxLayout,
+                        QHBoxLayout, QGridLayout, QScrollArea,
+                        QLineEdit, QPushButton, QLabel, QMessageBox,
+                        QSlider, QCheckBox, QKeySequence, QShortcut, QCursor,
+                        QApplication)
 
 from window_01.config import _get_user_db_path, _get_toolbox_path
 from window_01.db import FastDBQuery, IconCache, SmartCache
@@ -113,7 +114,31 @@ class SearchToolWindow(QMainWindow):
             show_p: True=每次显示时定位到鼠标位置，False=保持上次位置
         """
         self.ShowP = show_p
-    
+
+    def _move_near_cursor(self, cursor_pos):
+        """将窗口移动到鼠标附近，同时确保窗口不超出屏幕边界"""
+        win_w = self.width()
+        win_h = self.height()
+
+        # 默认偏移：窗口中心偏左上，让鼠标大致在窗口右下方
+        offset_x = -150
+        offset_y = -100
+
+        preferred_x = cursor_pos.x() + offset_x
+        preferred_y = cursor_pos.y() + offset_y
+
+        # 获取鼠标所在屏幕的可用区域
+        screen = QApplication.screenAt(cursor_pos)
+        if screen is None:
+            screen = QApplication.primaryScreen()
+        geom = screen.availableGeometry()
+
+        # 在屏幕范围内 clamp
+        x = max(geom.left(), min(preferred_x, geom.right() - win_w))
+        y = max(geom.top(), min(preferred_y, geom.bottom() - win_h))
+
+        self.move(x, y)
+
     def _apply_initial_search(self):
         """应用初始搜索文本（已合并到 _load_initial_data，此方法保留但不执行）"""
         pass
@@ -133,9 +158,8 @@ class SearchToolWindow(QMainWindow):
         # 如果 ShowP 为 True，重新定位到鼠标位置
         if self.ShowP:
             cursor_pos = QCursor.pos()
-            # 将窗口移动到鼠标位置（窗口左上角对齐鼠标）
-            self.move(cursor_pos.x()-150, cursor_pos.y()-100)
-            # print(f"窗口已移动到鼠标位置: ({cursor_pos.x()}, {cursor_pos.y()})")
+            # 将窗口移动到鼠标附近，但确保窗口在屏幕范围内
+            self._move_near_cursor(cursor_pos)
         
         super().showEvent(event)
     
