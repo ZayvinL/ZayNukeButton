@@ -14,49 +14,57 @@ from window_01.config import _get_user_db_path, _get_toolbox_path
 
 class ToolButton(QWidget):
     """自定义工具按钮"""
-    
+
     clicked = Signal(object)  # 点击信号，传递按钮自身
-    
+
     def __init__(self, tool_data, toolbox_path="", parent=None):
         super().__init__(parent)
         self.tool_data = tool_data
         # self.toolbox_path = toolbox_path
         self.toolbox_path = _get_toolbox_path()
         self._is_hovered = False
+        self._show_icon_mode = False
         self._setup_ui()
-    
+
     def _setup_ui(self):
         # 主布局
         layout = QVBoxLayout(self)
         layout.setContentsMargins(1, 1, 1, 1)
         layout.setSpacing(0)
-        
+
+        # 图标标签（图标模式时显示，默认隐藏）
+        self.icon_label = QLabel()
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        self.icon_label.setScaledContents(False)
+        self.icon_label.setVisible(False)
+        layout.addWidget(self.icon_label)
+
         # 文字标签（支持自动换行）
         name = self.tool_data['tname']
         if '.' in name:
             name = name[:name.rindex('.')]
-        
+
         self.text_label = QLabel(name)
         self.text_label.setAlignment(Qt.AlignCenter)
         self.text_label.setWordWrap(True)  # 启用自动换行
         self.text_label.setTextInteractionFlags(Qt.NoTextInteraction)
-        
+
         layout.addWidget(self.text_label)
-        
+
         # 构建 tooltip（包含图标）
         tooltip_parts = [
             f"<b>工具名称:</b> {self.tool_data['tname']}",
             f"<b>说明:</b> {self.tool_data['ttip']}",
             f"<b>类:</b> {self.tool_data['tclass']}"
         ]
-        
+
         # 拼接工具路径
         if self.tool_data['tpath']:
             tool_path = self.tool_data['tpath']
             if self.toolbox_path and not os.path.isabs(tool_path):
                 tool_path = os.path.join(self.toolbox_path, tool_path)
             tooltip_parts.append(f"<b>路径:</b> {tool_path}")
-        
+
         # 添加图标
         if self.tool_data['tpng']:
             icon_path = self.tool_data['tpng']
@@ -67,23 +75,23 @@ class ToolButton(QWidget):
                 tooltip_parts.append(f'<img src="{ed_image_path}" width="350">')
             else:
                 tooltip_parts.append(f"<b>图标路径:</b> {icon_path} (文件不存在)")
-        
+
         if self.tool_data['is_favorite']:
             tooltip_parts.append("⭐ 已收藏")
-        
+
         # 使用完整的 HTML 文档格式
         tooltip_html = "<html><body><p>" + "</p><p>".join(tooltip_parts) + "</p></body></html>"
         #print(f"  完整tooltip: {tooltip_html}")
         self.setToolTip(tooltip_html)
-        
+
         # 应用初始样式
         self._update_style()
-        
+
         # 从属性获取固定大小
         width = self.property('button_width') or 150
         height = self.property('button_height') or 70
         self.setFixedSize(width, height)
-    
+
     def _update_style(self):
         """更新样式"""
         if self._is_hovered:
@@ -94,7 +102,7 @@ class ToolButton(QWidget):
             bg_color = "rgba(35, 35, 35, 170)"
             border_color = "rgba(150, 200, 255, 200)"
             text_color = "rgba(230, 210, 180, 255)"
-        
+
         self.setStyleSheet(f"""
             QWidget {{
                 background-color: {bg_color};
@@ -107,31 +115,54 @@ class ToolButton(QWidget):
                 background-color: {bg_color};
             }}
         """)
-    
-    def update_content(self, tool_data):
+
+    def update_content(self, tool_data, show_icon_mode=False):
         """更新按钮内容（虚拟列表专用，不重建布局）"""
         self.tool_data = tool_data
-        
+        self._show_icon_mode = show_icon_mode
+
         # 更新文字
         name = tool_data['tname']
         if '.' in name:
             name = name[:name.rindex('.')]
-        
+
         self.text_label.setText(name)
-        
+
+        # 图标模式：有图标则显示图标，隐藏文字；无图标则回退到文字
+        if show_icon_mode and tool_data['tpng'] and os.path.exists(tool_data['tpng']):
+            pixmap = QPixmap(tool_data['tpng'])
+            if not pixmap.isNull():
+                # 按按钮大小缩放，留 8px 边距
+                btn_w = self.width() - 16
+                btn_h = self.height() - 16
+                scaled = pixmap.scaled(
+                    btn_w, btn_h,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                )
+                self.icon_label.setPixmap(scaled)
+                self.icon_label.setVisible(True)
+                self.text_label.setVisible(False)
+            else:
+                self.icon_label.setVisible(False)
+                self.text_label.setVisible(True)
+        else:
+            self.icon_label.setVisible(False)
+            self.text_label.setVisible(True)
+
         # 更新 tooltip
         tooltip_parts = [
             f"<b>工具名称:</b> {tool_data['tname']}",
             f"<b>说明:</b> {tool_data['ttip']}",
             f"<b>类:</b> {tool_data['tclass']}"
         ]
-        
+
         if tool_data['tpath']:
             tool_path = tool_data['tpath']
             if self.toolbox_path and not os.path.isabs(tool_path):
                 tool_path = os.path.join(self.toolbox_path, tool_path)
             tooltip_parts.append(f"<b>路径:</b> {tool_path}")
-        
+
         if tool_data['tpng']:
             icon_path = tool_data['tpng']
             icon_path = os.path.join(self.toolbox_path, icon_path)
@@ -140,29 +171,29 @@ class ToolButton(QWidget):
                 tooltip_parts.append(f'<img src="{ed_image_path}" width="350">')
             else:
                 tooltip_parts.append(f"<b>图标路径:</b> {icon_path} (文件不存在)")
-        
+
         if tool_data['is_favorite']:
             tooltip_parts.append("⭐ 已收藏")
-        
+
         tooltip_html = "<html><body><p>" + "</p><p>".join(tooltip_parts) + "</p></body></html>"
         self.setToolTip(tooltip_html)
-        
+
         # 重新应用样式，确保悬停状态正确显示
         self._update_style()
-    
+
     def mousePressEvent(self, event):
         """鼠标按下事件"""
         if event.button() == Qt.LeftButton:
             # 发射点击信号
             self.clicked.emit(self)
         super().mousePressEvent(event)
-    
+
     def enterEvent(self, event):
         """鼠标进入事件"""
         self._is_hovered = True
         self._update_style()
         super().enterEvent(event)
-    
+
     def leaveEvent(self, event):
         """鼠标离开事件"""
         self._is_hovered = False

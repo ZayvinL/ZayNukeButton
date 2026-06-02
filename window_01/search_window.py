@@ -299,6 +299,33 @@ class SearchToolWindow(QMainWindow):
         """)
         self.check_installed_only.stateChanged.connect(self._on_installed_filter_changed)
         search_layout.addWidget(self.check_installed_only)
+
+        # 显示图标复选框
+        self.check_show_icons = QCheckBox("图标")
+        self.check_show_icons.setChecked(True)
+        self.check_show_icons.setStyleSheet("""
+            QCheckBox {
+                color: rgba(255, 230, 200, 220);
+                font-size: 11px;
+                spacing: 5px;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border: 2px solid rgba(255, 140, 50, 180);
+                border-radius: 3px;
+                background-color: rgba(30, 30, 30, 150);
+            }
+            QCheckBox::indicator:checked {
+                background-color: rgba(255, 140, 50, 200);
+                border-color: rgba(255, 160, 80, 220);
+            }
+            QCheckBox::indicator:hover {
+                border-color: rgba(255, 180, 100, 220);
+            }
+        """)
+        self.check_show_icons.stateChanged.connect(self._on_show_icons_changed)
+        search_layout.addWidget(self.check_show_icons)
         
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("搜索工具... (C=:类, L=:标签, P=:路径, N=:名称)")
@@ -537,6 +564,10 @@ class SearchToolWindow(QMainWindow):
         """已安装过滤复选框状态改变"""
         # 重新执行搜索
         self._perform_search()
+
+    def _on_show_icons_changed(self, state):
+        """显示图标复选框状态改变"""
+        self._update_visible_buttons()
     
     def _refresh_cache(self):
         """清空缓存并重新搜索"""
@@ -685,7 +716,8 @@ class SearchToolWindow(QMainWindow):
                 
                 btn.tool_data = tool_copy
                 btn.button_index = tool_index  # 设置索引
-                btn.update_content(tool_copy)
+                show_icons = self.check_show_icons.isChecked()
+                btn.update_content(tool_copy, show_icon_mode=show_icons)
                 btn.setVisible(True)
             else:
                 btn.setVisible(False)
