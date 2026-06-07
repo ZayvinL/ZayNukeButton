@@ -328,14 +328,14 @@ class SearchToolWindow(QMainWindow):
         search_layout.addWidget(self.check_show_icons)
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("搜索工具... (C=:类, L=:标签, P=:路径, N=:名称)")
+        self.search_input.setPlaceholderText("双击或Alt+1输入 | C=:类 L=:标签 P=:路径 N=:名称")
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
                 padding: 8px 12px;
                 font-size: 12px;
                 background-color: rgba(30, 30, 30, {self.search_bg_alpha});
                 color: rgba(255, 230, 200, 255);
-                border: 1px solid rgba(255, 140, 50, 150);
+                border: 1px solid rgba(255, 140, 50, 100);
                 border-radius: 3px;
             }}
             QLineEdit:focus {{
@@ -348,6 +348,11 @@ class SearchToolWindow(QMainWindow):
         """)
         self.search_input.textChanged.connect(self._on_search_changed)
         search_layout.addWidget(self.search_input)
+
+        # 默认只读：防止打开面板后快捷键误入搜索框，Tab 或双击激活
+        self.search_input.setReadOnly(True)
+        self.search_input.installEventFilter(self)
+        self._search_active = False
         
         
         
@@ -476,7 +481,24 @@ class SearchToolWindow(QMainWindow):
         """)
     
     def eventFilter(self, obj, event):
-        """事件过滤器 - 处理滚轮和拖拽事件"""
+        """事件过滤器 - 处理滚轮、拖拽、搜索框激活"""
+        # Alt+1 激活搜索框
+        if event.type() == QEvent.KeyPress and \
+           event.key() == Qt.Key_1 and \
+           event.modifiers() == Qt.AltModifier:
+            if not self._search_active:
+                self._activate_search_input()
+                return True
+
+        # 搜索框事件（search_input 尚未创建时跳过）
+        if hasattr(self, 'search_input') and obj == self.search_input:
+            if event.type() == QEvent.MouseButtonDblClick:
+                if not self._search_active:
+                    self._activate_search_input()
+                    return True
+            if event.type() == QEvent.FocusOut:
+                self._deactivate_search_input()
+
         # 处理滚轮事件（在按钮区域和滑块上都支持）
         if event.type() == QEvent.Wheel:
             if obj == self.grid_container or obj == self.slider or obj in self.tool_buttons:
@@ -552,11 +574,32 @@ class SearchToolWindow(QMainWindow):
         # self.search_input.setFocus()
         self.slider.setFocus()
     
+    def _activate_search_input(self):
+        """激活搜索框：允许输入"""
+        self.search_input.setReadOnly(False)
+        self.search_input.setFocus()
+        self.search_input.selectAll()
+        self._search_active = True
+        # 激活后边框变亮
+        self.search_input.setStyleSheet(self.search_input.styleSheet().replace(
+            'border: 1px solid rgba(255, 140, 50, 100);',
+            'border: 1px solid rgba(255, 160, 80, 220);'))
+
+    def _deactivate_search_input(self):
+        """停用搜索框：恢复只读"""
+        self.search_input.setReadOnly(True)
+        self.search_input.clearFocus()
+        self._search_active = False
+        # 停用后边框变暗
+        self.search_input.setStyleSheet(self.search_input.styleSheet().replace(
+            'border: 1px solid rgba(255, 160, 80, 220);',
+            'border: 1px solid rgba(255, 140, 50, 100);'))
+
     def _on_search_changed(self, text):
         """搜索框内容变化 - 使用 debounce 避免频繁搜索"""
         # 停止之前的定时器
         self.search_timer.stop()
-        
+
         # 300ms 后执行搜索
         self.search_timer.start(300)
     

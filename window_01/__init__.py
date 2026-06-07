@@ -49,15 +49,14 @@ def set_show_at_mouse(show_p: bool):
 
 def show_search_window(initial_search_text=""):
     """显示搜索窗口"""
-    # 如果是第一次显示，创建窗口
     if _search_window_instance is None:
         init_search_window(initial_search_text)
     else:
-        # 如果窗口已存在，只更新搜索文本（可选）
-        if initial_search_text and _search_window_instance.initial_search_text != initial_search_text:
-            _search_window_instance.initial_search_text = initial_search_text
+        # 每次显示时都更新搜索文本（用户可能已手动清空）
+        _search_window_instance.initial_search_text = initial_search_text
+        if initial_search_text:
             _search_window_instance.search_input.setText(initial_search_text)
-            _search_window_instance._perform_search()
+        _search_window_instance._perform_search()
     
     _search_window_instance.show()
     return _search_window_instance
