@@ -1,101 +1,142 @@
-
-
 import os
 import sys
 import subprocess
-
 from pathlib import Path
+
+
+# ------------------------------------------------------------------------
+# 一次性目录权限配置（需要管理员/root，仅需运行一次）
+# ------------------------------------------------------------------------
+
+def setup_directory_shared_permissions(dir_path):
+    """
+    一次性配置目录权限，使所有用户在该目录下新建的文件自动获得共享读写权限。
+    需要以管理员 (Windows) 或 root (Linux) 身份运行，仅需执行一次。
+
+    Windows: 设置 Everyone 完全控制 + 权限继承
+    Linux:   设置默认 ACL (优先) 或 777
+    """
+    if not os.path.exists(dir_path):
+        print(f"[权限配置] 路径不存在: {dir_path}")
+        return False
+    if not os.path.isdir(dir_path):
+        print(f"[权限配置] 不是目录: {dir_path}")
+        return False
+
+    if sys.platform.startswith('win32'):
+        return _setup_windows_directory(dir_path)
+    elif sys.platform.startswith('linux'):
+        return _setup_linux_directory(dir_path)
+    else:
+        print(f"[权限配置] 不支持的系统: {sys.platform}")
+        return False
+
+
+def _setup_windows_directory(dir_path):
+    quoted = f'"{dir_path}"'
+    cmd = f'icacls {quoted} /grant Everyone:(F) /t /inheritance:e /c'
+
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"[权限配置] 成功: {dir_path} 已配置为共享目录")
+            return True
+        else:
+            print(f"[权限配置] 失败，请以管理员身份运行以下命令:")
+            print(f"    icacls {quoted} /grant Everyone:(F) /t /inheritance:e")
+            return False
+    except Exception as e:
+        print(f"[权限配置] 错误: {e}")
+        return False
+
+
+def _setup_linux_directory(dir_path):
+    # 优先使用 setfacl 设置默认权限（新文件自动继承）
+    try:
+        subprocess.run(
+            f"setfacl -R -m d:o::rwx,o::rwx {dir_path}",
+            shell=True, check=True, capture_output=True, text=True
+        )
+        print(f"[权限配置] 成功 (ACL): {dir_path} 已配置为共享目录")
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # fallback: chmod 777
+    try:
+        subprocess.run(
+            f"chmod -R 777 {dir_path}",
+            shell=True, check=True, capture_output=True, text=True
+        )
+        print(f"[权限配置] 成功 (chmod): {dir_path} 已配置为共享目录")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"[权限配置] 失败，请以 root 身份运行以下命令:")
+        print(f"    sudo chmod -R 777 {dir_path}")
+        return False
+
+
+# ------------------------------------------------------------------------
+# 单文件权限设置（轻量级，不阻塞导出流程）
+# ------------------------------------------------------------------------
+
+def set_file_permissions(file_path):
+    """
+    尝试为单个文件设置共享读写权限。
+    仅在用户拥有该文件所有权时有效，失败不阻塞调用方。
+
+    Windows: 用 icacls 授予 Everyone 完全控制（文件所有者可执行，无需管理员）
+    Linux:   用 os.chmod 设为 666
+    """
+    if not os.path.exists(file_path):
+        return False
+
+    try:
+        if sys.platform.startswith('linux'):
+            os.chmod(file_path, 0o666)
+            return True
+
+        elif sys.platform.startswith('win32'):
+            quoted = f'"{file_path}"'
+            cmd = f'icacls {quoted} /grant Everyone:(F)'
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            if result.returncode == 0:
+                return True
+            else:
+                print(f"[权限提示] 无法为文件设置共享权限，建议管理员运行一次目录权限配置")
+                return False
+
+        return False
+    except Exception:
+        return False
+
+
+# ------------------------------------------------------------------------
+# 向后兼容的封装
+# ------------------------------------------------------------------------
+
+def set_json_permissions(json_path):
+    """向后兼容，同 set_file_permissions"""
+    return set_file_permissions(json_path)
+
+
+def seteveryone_fullct(path):
+    """向后兼容，同 set_file_permissions"""
+    return set_file_permissions(path)
 
 
 def set_recursive_777(folder_path):
     """
-    为Linux系统中的指定文件夹及其所有内容（包括子文件夹和文件）
-    统一设置777权限（所有用户可读写执行）
+    向后兼容，现在改为调用 setup_directory_shared_permissions。
+    仅在 Linux 下有效（Windows 请用 setup_directory_shared_permissions）。
     """
-    # 检查系统是否为Linux
     if not sys.platform.startswith('linux'):
-        print("错误：此功能仅适用于Linux系统")
+        print("[权限配置] set_recursive_777 仅支持 Linux，Windows 请用 setup_directory_shared_permissions")
         return False
-    
-    # 检查路径是否存在且为文件夹
-    if not os.path.exists(folder_path):
-        print(f"错误：路径 '{folder_path}' 不存在")
-        return False
-    if not os.path.isdir(folder_path):
-        print(f"错误：'{folder_path}' 不是一个文件夹")
-        return False
-    
-    try:
-        # 使用chmod -R递归设置所有内容为777权限
-        subprocess.run(
-            f"chmod -R 777 {folder_path}",
-            shell=True,
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        
-        print(f"成功为 '{folder_path}' 及其所有内容设置777权限")
-        return True
-        
-    except subprocess.CalledProcessError as e:
-        print(f"权限设置失败：{e.stderr}")
-        return False
-    except Exception as e:
-        print(f"发生错误：{str(e)}")
-        return False
-
-# ------------------------------------------------------------------------
+    return _setup_linux_directory(folder_path)
 
 
-def seteveryone_fullct(path):
-    # windows
-    # 处理路径中的空格，确保命令正确识别
-    quoted_path = f'"{path}"'
-    # 构建icacls命令，授予Everyone完全控制权限，/t表示递归处理子目录
-    cmd = f'icacls {quoted_path} /grant Everyone:(F) /t'
-    
-    try:
-        # 执行命令
-        result = subprocess.run(
-            cmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            check=True  # 当命令返回非0状态码时抛出异常
-        )
-        print(f'成功设置权限: {path}')
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f'设置权限失败: {path}')
-        print(f'错误信息: {e.stderr}')
-        return False
-    except Exception as e:
-        print(f'发生意外错误: {str(e)}')
-        return False
-# ------------------------------------------------------------------------
-
-def set_json_permissions(json_path):
-    """专门为JSON文件设置跨平台权限，确保用户可编辑"""
-    if sys.platform.startswith('linux'):
-        # Linux：开放读写权限
-        os.chmod(json_path, 0o666)
-    elif sys.platform.startswith('win32'):
-        seteveryone_fullct(json_path)
-
-            
-            
-            
-# 遍历所有json文件，尝试修改json文件的权限
 def find_all_json_files(root_dir):
-    """
-    遍历 root_dir 及其子目录，返回所有 .json 文件的路径列表（pathlib 版本）
-    """
+    """遍历 root_dir 及其子目录，返回所有 .json 文件的路径列表"""
     root_path = Path(root_dir)
-    # 递归查找所有 .json 文件（case-insensitive）
-    json_files = list(root_path.rglob("*.json"))  # rglob 递归匹配
-    # 转换为字符串路径（可选，根据需要保留 Path 对象）
-    return [str(file) for file in json_files]
-
-
-
+    return [str(file) for file in root_path.rglob("*.json")]

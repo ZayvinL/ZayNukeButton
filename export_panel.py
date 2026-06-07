@@ -296,23 +296,33 @@ class ExportToolPanel( nukescripts.PythonPanel ):
             else:
                 WritePyFile(path,pythonScript) 
         
-        # 新增：为JSON文件设置权限
-        quanxian.set_json_permissions(path)  # 针对导出文件处理权限
-                
+        # 尝试为导出文件设置共享权限
+        perm_ok1 = quanxian.set_file_permissions(path)
+
         # 生成 JSON 文件
         json_filepath = GenerateJsonFile(
             tool_name=tool_name,
-            main_file=main_filename,  # JSON 中只保存相对文件名
+            main_file=main_filename,
             icon_file=icon_file,
             help_file=help_file,
             tag=tag,
             matchClass=matchClass
         )
-        
+
         # 读取生成的 JSON 文件获取 tool_id
         json_data = RWJ.ReadJson(json_filepath)
-        # 新增：为JSON文件设置权限
-        quanxian.set_json_permissions(json_filepath)  # 仅针对JSON文件处理权限
+        # 尝试为JSON文件设置共享权限
+        perm_ok2 = quanxian.set_file_permissions(json_filepath)
+
+        # 如果单文件权限设置失败，提示一次性目录配置方案
+        if not (perm_ok1 and perm_ok2):
+            tools_dir = psp.tools_path_get()
+            print("=" * 55)
+            print("[提示] 文件权限设置未完全成功，多用户共享可能受限。")
+            print("  请管理员执行以下一次性配置（仅需一次）：")
+            print("  import QuanXianSet")
+            print('  QuanXianSet.setup_directory_shared_permissions("{}")'.format(tools_dir))
+            print("=" * 55)
 
         tool_id = json_data.get('id')
         

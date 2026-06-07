@@ -146,6 +146,7 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         
         # 编辑功能
         widgets['btn_rename'].clicked.connect(self.rename_tool)
+        widgets['btn_move_tool'].clicked.connect(self.move_tool)
         widgets['btn_save_tag'].clicked.connect(self.save_tag)
         widgets['btn_save_matchclass'].clicked.connect(self.save_matchclass)
         widgets['btn_add_matchclass'].clicked.connect(self.add_suggestion_to_matchclass)
@@ -228,7 +229,11 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
             widgets['lbl_matchClass'].setText(str(matchClass))
         
         widgets['lbl_category'].setText(self.current_tool_data.get('category', 'N/A'))
-        
+
+        # 移动工具：显示当前所在目录
+        current_dir = os.path.dirname(self.current_tool_data.get('main_file', ''))
+        widgets['lbl_move_current'].setText(f"当前位于: {current_dir if current_dir else 'tools/'}")
+
         main_file = self.current_tool_data.get('main_file', 'N/A')
         tools_root = psp.tools_path_get()
         full_path = os.path.join(tools_root, main_file.replace('/', os.sep))
@@ -265,6 +270,14 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         success = self.metadata_editor.rename_tool()
         if success:
             # 刷新显示
+            self.on_selection_changed(self.ui_builder.get_widget('tool_list').currentItem(), None)
+            self.load_tools_from_db()
+
+    def move_tool(self):
+        """移动工具到其他目录"""
+        success = self.metadata_editor.move_tool()
+        if success:
+            # 刷新显示和列表
             self.on_selection_changed(self.ui_builder.get_widget('tool_list').currentItem(), None)
             self.load_tools_from_db()
     

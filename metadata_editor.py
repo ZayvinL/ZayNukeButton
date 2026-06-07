@@ -8,7 +8,7 @@ import json
 import os
 # from PySide6.QtWidgets import QMessageBox
 # from PySide6.QtCore import Qt
-from qt_imports import QMessageBox, Qt
+from qt_imports import QMessageBox, QVBoxLayout, QLabel, Qt, QtWidgets
 
 
 class MetadataEditor:
@@ -133,6 +133,235 @@ class MetadataEditor:
         except Exception as e:
             QMessageBox.critical(None, "错误", f"更新元数据失败:\n{str(e)}")
             return False
+
+    def move_tool(self):
+        """移动工具到其他目录，同步更新所有路径引用"""
+        if not self.current_tool_data:
+            QMessageBox.warning(None, "警告", "请先选择一个工具")
+            return False
+
+        import paths_setup as psp
+
+        tool_id = self.current_tool_data.get('id')
+        tool_name = self.current_tool_data.get('name', '')
+        main_file = self.current_tool_data.get('main_file', '')
+
+        if not main_file:
+            QMessageBox.critical(None, "错误", "工具没有主文件路径")
+            return False
+
+        tools_root = psp.tools_path_get()
+        old_main_rel = main_file
+        old_dir = os.path.dirname(old_main_rel)
+        old_filename = os.path.basename(old_main_rel)
+        base_name, ext = os.path.splitext(old_filename)
+
+        old_full_path = os.path.join(tools_root, old_main_rel.replace('/', os.sep))
+        if not os.path.exists(old_full_path):
+            QMessageBox.critical(None, "错误", f"原文件不存在:\n{old_full_path}")
+            return False
+
+        # --- 弹出目录选择对话框 ---
+        target_dir = self._show_directory_picker(tools_root, old_dir)
+        if not target_dir:
+            return False
+
+        if target_dir == old_dir:
+            QMessageBox.information(None, "提示", "目标目录与当前目录相同，无需移动")
+            return False
+
+        new_main_rel = os.path.join(target_dir, old_filename).replace(os.sep, '/')
+        new_full_path = os.path.join(tools_root, target_dir, old_filename)
+
+        if os.path.exists(new_full_path):
+            reply = QMessageBox.question(None, "文件冲突",
+                f"目标位置已存在同名文件:\n{new_full_path}\n\n是否覆盖？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply != QMessageBox.StandardButton.Yes:
+                return False
+
+        try:
+            os.makedirs(os.path.dirname(new_full_path), exist_ok=True)
+
+            # 1. 移动主文件
+            os.rename(old_full_path, new_full_path)
+
+            # 2. 移动关联文件 (.json, .png, .md)
+            old_base = os.path.splitext(old_full_path)[0]
+            new_base = os.path.splitext(new_full_path)[0]
+            new_json_rel = None
+            new_icon_rel = None
+
+            for suffix in ['.json', '.png', '.md', '.markdown']:
+                old_assoc = old_base + suffix
+                if os.path.exists(old_assoc):
+                    new_assoc = new_base + suffix
+                    os.rename(old_assoc, new_assoc)
+                    if suffix == '.json':
+                        new_json_rel = os.path.relpath(new_assoc, tools_root).replace(os.sep, '/')
+                    elif suffix == '.png':
+                        new_icon_rel = os.path.relpath(new_assoc, tools_root).replace(os.sep, '/')
+
+            # 3. 更新 JSON 文件内的路径
+            if new_json_rel:
+                json_full_path = os.path.join(tools_root, new_json_rel.replace('/', os.sep))
+                if os.path.exists(json_full_path):
+                    with open(json_full_path, 'r', encoding='utf-8') as f:
+                        metadata = json.load(f)
+
+                    metadata['files']['main'] = new_main_rel
+
+                    # 修正 icon 路径（如果还在旧目录下）
+                    old_icon = metadata.get('files', {}).get('icon')
+                    if old_icon and old_icon.startswith(old_dir + '/'):
+                        metadata['files']['icon'] = os.path.join(
+                            target_dir, os.path.basename(old_icon)).replace(os.sep, '/')
+
+                    # 修正 help 路径（如果还在旧目录下）
+                    old_help = metadata.get('files', {}).get('help')
+                    if old_help and old_help.startswith(old_dir + '/'):
+                        metadata['files']['help'] = os.path.join(
+                            target_dir, os.path.basename(old_help)).replace(os.sep, '/')
+
+                    with open(json_full_path, 'w', encoding='utf-8') as f:
+                        json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+            # 4. 更新 SQLite
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE tools_index
+                SET main_file = ?, icon_file = ?, category = ?
+                WHERE id = ?
+            ''', (new_main_rel, new_icon_rel, target_dir, tool_id))
+            conn.commit()
+            conn.close()
+
+            # 5. 更新内存数据
+            self.current_tool_data['main_file'] = new_main_rel
+            self.current_tool_data['category'] = target_dir
+            if new_icon_rel:
+                self.current_tool_data['icon_file'] = new_icon_rel
+
+            for tool in self.all_tools:
+                if tool.get('id') == tool_id:
+                    tool['main_file'] = new_main_rel
+                    tool['category'] = target_dir
+                    if new_icon_rel:
+                        tool['icon_file'] = new_icon_rel
+                    break
+
+            # 6. 设置共享权限
+            import QuanXianSet as quanxian
+            quanxian.set_file_permissions(new_full_path)
+            if new_json_rel:
+                quanxian.set_file_permissions(json_full_path)
+
+            QMessageBox.information(None, "成功",
+                f"工具已移动到:\n{target_dir}/\n\n路径引用已全部更新")
+            return True
+
+        except Exception as e:
+            QMessageBox.critical(None, "错误", f"移动工具失败:\n{str(e)}")
+            return False
+
+    def _show_directory_picker(self, tools_root, current_dir):
+        """弹出目录树选择对话框，返回相对于 tools_root 的路径"""
+
+        def _populate_tree(parent_item, dir_path):
+            """递归填充目录树，排除含 # 的目录"""
+            try:
+                entries = sorted(os.listdir(dir_path))
+            except OSError:
+                return
+            for name in entries:
+                if '#' in name:
+                    continue
+                full = os.path.join(dir_path, name)
+                if os.path.isdir(full):
+                    rel = os.path.relpath(full, tools_root).replace(os.sep, '/')
+                    item = QtWidgets.QTreeWidgetItem(parent_item)
+                    item.setText(0, name)
+                    item.setData(0, Qt.ItemDataRole.UserRole, rel)
+                    _populate_tree(item, full)
+
+        dlg = QtWidgets.QDialog(None)
+        dlg.setWindowTitle("选择目标目录")
+        dlg.setMinimumSize(420, 500)
+        dlg.resize(450, 550)
+
+        layout = QVBoxLayout(dlg)
+
+        info_lbl = QLabel(f"当前分类: <b>{current_dir if current_dir else '(根目录)'}</b>")
+        layout.addWidget(info_lbl)
+
+        tree = QtWidgets.QTreeWidget()
+        tree.setHeaderHidden(True)
+        tree.setIndentation(16)
+
+        # 根节点 (tools/)
+        root_item = QtWidgets.QTreeWidgetItem(tree)
+        root_item.setText(0, "tools/")
+        root_item.setData(0, Qt.ItemDataRole.UserRole, "")
+        _populate_tree(root_item, tools_root)
+
+        tree.expandAll()
+
+        # 预选当前目录
+        def _select_current(item):
+            for i in range(item.childCount()):
+                child = item.child(i)
+                if child.data(0, Qt.ItemDataRole.UserRole) == current_dir:
+                    tree.setCurrentItem(child)
+                    return
+                _select_current(child)
+
+        _select_current(tree.invisibleRootItem())
+
+        layout.addWidget(tree)
+
+        # 预览标签
+        preview_lbl = QLabel("")
+        preview_lbl.setStyleSheet("color: #aaa; font-size: 11px; padding: 4px;")
+        layout.addWidget(preview_lbl)
+
+        def _on_selection():
+            cur = tree.currentItem()
+            if cur:
+                sel = cur.data(0, Qt.ItemDataRole.UserRole)
+                preview_lbl.setText(f"目标: {sel + '/' if sel else ''}{{工具名}}")
+            else:
+                preview_lbl.setText("")
+
+        # 选中后才启用确认按钮，同时更新预览
+        def _on_current_changed(cur, _prev):
+            btn_ok.setEnabled(cur is not None)
+            _on_selection()
+
+        tree.currentItemChanged.connect(_on_current_changed)
+
+        # 按钮
+        btn_box = QtWidgets.QDialogButtonBox()
+        btn_ok = btn_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        btn_cancel = btn_box.addButton(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        btn_ok.setText("确认移动")
+        btn_cancel.setText("取消")
+        btn_ok.setEnabled(False)
+
+        def _on_ok():
+            cur = tree.currentItem()
+            if cur:
+                dlg._selected_dir = cur.data(0, Qt.ItemDataRole.UserRole)
+                dlg.accept()
+
+        btn_box.accepted.connect(_on_ok)
+        btn_box.rejected.connect(dlg.reject)
+        layout.addWidget(btn_box)
+
+        dlg._selected_dir = None
+        dlg.exec()
+
+        return dlg._selected_dir
 
     def save_tag(self, on_refresh_callback):
         """保存标签并同步更新"""

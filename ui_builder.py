@@ -277,7 +277,39 @@ class UIBuilder:
         
         name_edit_layout.addLayout(name_input_layout)
         edit_layout.addWidget(name_edit_group)
-        
+
+        # 移动工具到其他目录
+        move_group = QGroupBox("移动工具到其他目录")
+        move_layout = QVBoxLayout(move_group)
+        move_info = QLabel("将工具及其关联文件移动到其他分类目录，自动更新所有路径引用")
+        move_info.setWordWrap(True)
+        move_info.setStyleSheet("color: #aaa; font-size: 11px;")
+        move_layout.addWidget(move_info)
+
+        move_btn_layout = QHBoxLayout()
+        self.widgets['lbl_move_current'] = QLabel("")
+        self.widgets['lbl_move_current'].setStyleSheet("color: #888; font-size: 11px;")
+        move_btn_layout.addWidget(self.widgets['lbl_move_current'], 1)
+
+        self.widgets['btn_move_tool'] = QPushButton("移动工具")
+        self.widgets['btn_move_tool'].setStyleSheet("""
+            QPushButton {
+                background: #e67e22;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 15px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #d35400;
+            }
+        """)
+        move_btn_layout.addWidget(self.widgets['btn_move_tool'])
+        move_layout.addLayout(move_btn_layout)
+
+        edit_layout.addWidget(move_group)
+
         # 编辑元数据
         meta_edit_group = QGroupBox("编辑元数据")
         meta_edit_layout = QVBoxLayout(meta_edit_group)
