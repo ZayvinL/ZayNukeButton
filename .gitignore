@@ -1,67 +1,45 @@
-A1.scene.json
-A2.scene.json
-sss1_assets/texts/text_001.txt
-sss1_assets/texts/text_002.txt
-sss1_assets/texts/text_003.txt
-ssss1_assets/texts/text_001.txt
-ssss1_assets/texts/text_002.txt
-sss1.scene.json
-A1_assets/texts/text_001.txt
-A1_assets/texts/text_002.txt
-A1_assets/texts/text_003.txt
-A1_assets/texts/text_004.txt
-A2_assets/texts/text_001.txt
-A2_assets/texts/text_002.txt
-A2_assets/texts/text_003.txt
-sss1.scene.json
-.venv
-#bbb
-.lingma
-.vscode
-
-# Python 编译文件和缓存
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Cython 编译文件
-*.c
-*.cpp
-*.cxx
-*.h
-*.hpp
-*.hxx
-*.pyx
-*.pxd
+*.pyo
 *.so
 *.pyd
+.Python
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
 
-# 项目资源文件（assets 目录）
-*_assets/
+# 虚拟环境
+venv/
+.venv/
 
-# 场景文件（可选，根据需要决定是否忽略）
-*.scene.json
+# IDE
+.vscode/
+.idea/
 
-/ENote.dist
-/ENote.build
-/tools
-/venv
-/libs
-/pnghelp
+# Claude Code 本地配置
+.claude/
+
+# 用户数据（数据库、个人配置、临时导出）
+SQLite_file/
+users/
+tempexport/
+
+# 帮助文档图片（运行时自动生成版本副本）
+pnghelp/*_v*.png
+pnghelp/*_v*.svg
+
+# 工具文件——只上传 githubTools 示例，其余忽略
+tools/
+!tools/githubTools/
+
+# 压缩包
+*.rar
+
+# 编辑器
+.vscode/
+*.swp
+*.swo
+*~
