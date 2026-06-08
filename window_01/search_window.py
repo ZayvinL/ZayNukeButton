@@ -160,7 +160,7 @@ class SearchToolWindow(QMainWindow):
     def _setup_shortcuts(self):
         """设置快捷键"""
         esc_shortcut = QShortcut(QKeySequence("Esc"), self)
-        esc_shortcut2 = QShortcut(QKeySequence("A"), self)
+        esc_shortcut2 = QShortcut(QKeySequence("ALT+W"), self)
         esc_shortcut.activated.connect(self.refresh_status)
         esc_shortcut2.activated.connect(self.refresh_status)
     
