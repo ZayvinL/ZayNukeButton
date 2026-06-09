@@ -328,7 +328,7 @@ class SearchToolWindow(QMainWindow):
         search_layout.addWidget(self.check_show_icons)
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("双击或Alt+1输入 | C=:类 L=:标签 P=:路径 N=:名称")
+        self.search_input.setPlaceholderText("双击或Alt+E输入 | C=:类 L=:标签 P=:路径 N=:名称")
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
                 padding: 8px 12px;
@@ -482,9 +482,9 @@ class SearchToolWindow(QMainWindow):
     
     def eventFilter(self, obj, event):
         """事件过滤器 - 处理滚轮、拖拽、搜索框激活"""
-        # Alt+1 激活搜索框
+        # Alt+E 激活搜索框
         if event.type() == QEvent.KeyPress and \
-           event.key() == Qt.Key_1 and \
+           event.key() == Qt.Key_E and \
            event.modifiers() == Qt.AltModifier:
             if not self._search_active:
                 self._activate_search_input()
