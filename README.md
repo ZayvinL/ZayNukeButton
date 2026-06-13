@@ -6,6 +6,16 @@ A Nuke tool search & management system — hotkey to launch, multi-condition sea
 
 ---
 
+---
+
+## 视频教程 / Video Tutorial
+
+📺 [B站视频教程](https://www.bilibili.com/video/BV1VCJn6AEeu?vd_source=608020ca5706ed424ebe71dcdca4f176&spm_id_from=333.788.videopod.sections) - 详细的功能演示和使用说明
+
+📺 [Bilibili Video Tutorial](https://www.bilibili.com/video/BV1VCJn6AEeu?vd_source=608020ca5706ed424ebe71dcdca4f176&spm_id_from=333.788.videopod.sections) - Detailed feature demonstration and usage instructions
+
+---
+
 ## 功能 / Features
 
 | | |
