@@ -23,11 +23,25 @@ A Nuke tool search & management system — hotkey to launch, multi-condition sea
 
 ---
 
+## 代码仓库 / Repositories
+
+| 平台 | 地址 |
+|------|------|
+| **GitHub**（主仓库） | [https://github.com/ZayvinL/ZayNukeButton](https://github.com/ZayvinL/ZayNukeButton) |
+| **Gitee**（镜像） | [https://gitee.com/q-wuan90/ZayNukeButton](https://gitee.com/q-wuan90/ZayNukeButton) |
+
+> Gitee 镜像与 GitHub 主仓库保持同步，中国大陆用户可通过 Gitee 获得更快的访问速度。
+
+---
+
 ## 快速安装 / Quick Start
 
 ```bash
 cd ~/.nuke
+# GitHub
 git clone https://github.com/ZayvinL/ZayNukeButton.git
+# Gitee（国内推荐）
+git clone https://gitee.com/q-wuan90/ZayNukeButton.git
 ```
 
 在 `~/.nuke/init.py` 中添加 / Add to `~/.nuke/init.py`:
