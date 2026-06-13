@@ -86,7 +86,7 @@ ZayNukeButton/
 
 ## 依赖 / Dependencies
 
-- Nuke 12.0+
+- Nuke 15 / Nuke 16
 - PySide2 / PySide6（Nuke 内置 / built-in）
 
 ## License
