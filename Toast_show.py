@@ -17,9 +17,9 @@ def A_Toast(tile_info, message_info):
     msg_box.setModal(False)
     msg_box.show()
     # 显示之后设置大小
-    msg_box.setFixedSize(1000, 200)
+    #msg_box.setFixedSize(1000, 200)
 
-def B_Toast(title_info, message_info, duration_ms=3000):
+def B_Toast(title_info, message_info, duration_ms=1100):
     """用 QWidget+QLabel 实现的 Toast，支持按钮关闭、居中、自动换行"""
     global toast_win
 

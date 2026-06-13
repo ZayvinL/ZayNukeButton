@@ -84,6 +84,44 @@ ZayNukeButton/
 
 ---
 
+## 工具开发 / Tool Development
+
+### selected_nodes_list — 获取选中节点
+
+工具（.py）被执行时，系统会自动注入 `selected_nodes_list` 变量，包含当前所有选中节点的 `fullName()` 列表，**包括 Group 组内选中的节点**。
+
+```python
+import nuke
+
+# selected_nodes_list 已由系统注入，可直接使用
+for node_fullname in selected_nodes_list:
+    node = nuke.toNode(node_fullname)
+    print(node.Class(), node.fullName())
+```
+
+> `fullName()` 会保留 Group 层级路径（如 `Group1.Blur1`），`nuke.toNode()` 可直接定位到组内节点。
+
+### Toast 提示弹窗
+
+`Toast_show.py` 提供两个弹窗函数，用于工具执行后给出反馈：
+
+| 函数 | 特点 |
+|------|------|
+| `A_Toast(title, message)` | 简单 QMessageBox，1.3 秒自动关闭 |
+| `B_Toast(title, message, duration_ms=1100)` | 自定义样式浮窗，带"确定"按钮和自动关闭，居中显示 |
+
+```python
+import Toast_show
+
+# 简短提示，自动消失
+Toast_show.A_Toast("完成", "已处理 3 个节点")
+
+# 带关闭按钮的提示，5 秒自动关闭
+Toast_show.B_Toast("操作成功", "工具已应用到所选节点", duration_ms=5000)
+```
+
+---
+
 ## 依赖 / Dependencies
 
 - Nuke 15 / Nuke 16

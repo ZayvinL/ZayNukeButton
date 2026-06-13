@@ -12,6 +12,7 @@ import toaddpanel
 import settool
 import export_panel
 import Toast_show
+import nukendoesget
 
 
 
@@ -26,6 +27,7 @@ def make_menu():
     toolbar.addCommand('Button/ZayNukeButton', window_panel.run_show,"ALT+W",shortcutContext=2)
     toolbar.addCommand('Button/Export', export_panel.run_show)
     toolbar.addCommand('Button/ZayButtonInstall', toaddpanel.run_show_funa)
+    toolbar.addCommand('Button/PrintSelectedNodes', nukendoesget.getcurnodes)
     toolbar.addCommand('Button/Refresh hotkey', reloadhotkey)
 
 
@@ -60,8 +62,10 @@ def execute_tool(s=None,nodenamelist=[]):
                 f = codecs.open(s,'r',encoding='utf-8')
                 mpy = f.read()
                 f.close() 
-            
-            str003 = '\nselected_nodes_list = list({})\n'.format(nodenamelist)
+            # print("aa")
+            # print(nodenamelist)
+            # print("bb")
+            str003 = f'\nselected_nodes_list = {nodenamelist}\n'
             
             mpy = str003 + mpy
             sp = {}

@@ -31,13 +31,13 @@ def run_show():
             classlist = ",".join(clist)
 
             
-            show_search_window(classlist)
+            show_search_window(classlist, nodesnameslsit)
         else:
             nodesclasslsit.append("AnySelectedNode")
             nodesclasslsit.append("AnyTime")
             clist = ["C=:" + i for i in nodesclasslsit]
             classlist = ",".join(clist)
-            show_search_window(classlist)
+            show_search_window(classlist, nodesnameslsit)
         
         # 首次连接信号（只连接一次）
         if not _window_signal_connected:

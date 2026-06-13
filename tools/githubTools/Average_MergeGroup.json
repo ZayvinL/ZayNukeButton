@@ -1,0 +1,11 @@
+{
+    "files": {
+        "help": null,
+        "icon": null,
+        "main": "githubTools/Average_MergeGroup.py"
+    },
+    "id": "30dbb38d-8fb1-4bfd-b7a1-11fc03ce89a7",
+    "matchClass": [],
+    "name": "Average_MergeGroup",
+    "tag": ""
+}

@@ -103,6 +103,7 @@ class SearchToolWindow(QMainWindow):
         self.current_search_params = {}
         self.current_offset = 0
         self.total_count = 0
+        self.nodesnames_list = []  # 由 window_panel 设置，避免点击时焦点丢失导致查询错误
         
         # 搜索 debounce 定时器
         self.search_timer = QTimer()
@@ -812,7 +813,12 @@ class SearchToolWindow(QMainWindow):
     def _on_tool_clicked(self, btn):
         """工具按钮点击"""
         tool_data = btn.tool_data
-        self.nodesnames_list, self.nodesclasslsit = nukendoesget.getcurnodes()
+        # 优先使用 show_search_window 时保存的选中节点信息（此时 DAG 上下文正确），
+        # 避免因点击搜索窗口导致焦点离开 Nuke DAG 后 selectedNodes() 丢失 Group 上下文
+        if getattr(self, 'nodesnames_list', None):
+            self.nodesclasslsit = nukendoesget.getcurnodes()[1]
+        else:
+            self.nodesnames_list, self.nodesclasslsit = nukendoesget.getcurnodes()
         
         print(f"[执行工具] {tool_data['tname']}")
         print(f"   工具路径: {tool_data['tpath']}")
@@ -833,6 +839,9 @@ class SearchToolWindow(QMainWindow):
         
         # 执行工具
         try:
+            # print("ccc")
+            # print(self.nodesnames_list)
+            # print("ccc")
             nuke.execute_tool(tool_path,self.nodesnames_list)
         except Exception as e:
             QMessageBox.critical(

@@ -15,21 +15,24 @@ from window_01.search_window import SearchToolWindow
 
 _search_window_instance = None
 
-def init_search_window(initial_search_text=""):
+def init_search_window(initial_search_text="", nodesnames_list=None):
     """初始化搜索窗口
-    
+
     Args:
         initial_search_text: 初始搜索文本
+        nodesnames_list: 当前选中节点名称列表
     """
     global _search_window_instance
-    
+
     # 如果实例已存在，重新创建（确保代码更改生效）
     if _search_window_instance is not None:
         _search_window_instance = None
-    
+
     toolbox_path = _get_toolbox_path()
     _search_window_instance = SearchToolWindow(toolbox_path, initial_search_text=initial_search_text)
-    
+    if nodesnames_list is not None:
+        _search_window_instance.nodesnames_list = nodesnames_list
+
     return _search_window_instance
 
 def is_window_visible():
@@ -47,17 +50,19 @@ def set_show_at_mouse(show_p: bool):
     if _search_window_instance:
         _search_window_instance.set_show_at_mouse(show_p)
 
-def show_search_window(initial_search_text=""):
+def show_search_window(initial_search_text="", nodesnames_list=None):
     """显示搜索窗口"""
     if _search_window_instance is None:
-        init_search_window(initial_search_text)
+        init_search_window(initial_search_text, nodesnames_list)
     else:
         # 每次显示时都更新搜索文本（用户可能已手动清空）
         _search_window_instance.initial_search_text = initial_search_text
         if initial_search_text:
             _search_window_instance.search_input.setText(initial_search_text)
+        if nodesnames_list is not None:
+            _search_window_instance.nodesnames_list = nodesnames_list
         _search_window_instance._perform_search()
-    
+
     _search_window_instance.show()
     return _search_window_instance
 
