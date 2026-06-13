@@ -227,7 +227,14 @@ def sync_tools_to_database(db_path=None):
     all_tools = tfj.get_all_tools()
     
     if not all_tools:
-        print(" 没有找到工具")
+        print(" 没有找到工具，清理数据库中的旧工具记录")
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM tools_index')
+        cursor.execute('DELETE FROM user_tools')
+        conn.commit()
+        conn.close()
+        print(" 已清空所有工具记录")
         return 0
     
     conn = sqlite3.connect(db_path)

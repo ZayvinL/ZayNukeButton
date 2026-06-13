@@ -32,7 +32,7 @@ pnghelp/*_v*.png
 pnghelp/*_v*.svg
 
 # 工具文件——只上传 githubTools 示例，其余忽略
-tools/
+tools/*
 !tools/githubTools/
 
 # 压缩包
