@@ -137,6 +137,10 @@ Toast_show.B_Toast("操作成功", "工具已应用到所选节点", duration_ms
 - Nuke 15 / Nuke 16
 - PySide2 / PySide6（Nuke 内置 / built-in）
 
-## License
+## License / 许可
 
-MIT
+Copyright 2026 LIUXIAOBO (刘晓波).
+
+Licensed under the Apache License, Version 2.0.
+See [LICENSE](./LICENSE) for the full license text.
+See [NOTICE](./NOTICE) for copyright attribution.
