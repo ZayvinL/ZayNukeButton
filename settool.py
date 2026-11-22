@@ -16,6 +16,9 @@ import sqlite3
 import json
 import os
 import sys
+import subprocess
+import shutil
+import urllib.parse
 
 # 添加本地 libs 到 Python 路径
 libs_path = os.path.join(os.path.dirname(__file__), 'libs')
@@ -132,6 +135,7 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         self.lbl_matchClass = widgets['lbl_matchClass']
         self.lbl_category = widgets['lbl_category']
         self.lbl_file = widgets['lbl_file']
+        self.btn_open_file_location = widgets['btn_open_file_location']
         self.icon_preview_label = widgets['icon_preview_label']
         self.lbl_icon_preview = widgets['lbl_icon_preview']
         self.btn_save_icon = widgets['btn_save_icon']
@@ -161,6 +165,7 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
         # 编辑功能
         widgets['btn_rename'].clicked.connect(self.rename_tool)
         widgets['btn_move_tool'].clicked.connect(self.move_tool)
+        widgets['btn_open_file_location'].clicked.connect(self.open_file_location)
         widgets['btn_save_tag'].clicked.connect(self.save_tag)
         widgets['btn_save_matchclass'].clicked.connect(self.save_matchclass)
         widgets['btn_add_matchclass'].clicked.connect(self.add_suggestion_to_matchclass)
@@ -294,6 +299,64 @@ class ToolManagerApp(QMainWindow, HelpEditorMixin):
             # 刷新显示和列表
             self.on_selection_changed(self.ui_builder.get_widget('tool_list').currentItem(), None)
             self.load_tools_from_db()
+
+    def open_file_location(self):
+        """在文件资源管理器中显示当前选中工具的位置（兼容 Windows / Linux / macOS）"""
+        if not self.current_tool_data:
+            QMessageBox.information(self, "提示", "请先在左侧列表中选择一个工具")
+            return
+
+        main_file = self.current_tool_data.get('main_file', '')
+        tools_root = psp.tools_path_get()
+        if not main_file:
+            full_path = tools_root
+        else:
+            full_path = os.path.join(tools_root, main_file.replace('/', os.sep))
+
+        # 确定要打开的目录：文件存在则取其所在目录，否则退回 tools 根目录
+        if os.path.isdir(full_path):
+            target_dir = full_path
+        elif os.path.isfile(full_path):
+            target_dir = os.path.dirname(full_path)
+        else:
+            target_dir = tools_root
+
+        try:
+            if sys.platform == 'win32':
+                # Windows: explorer /select, 会选中目标文件；仅目录则直接打开
+                if os.path.isfile(full_path):
+                    subprocess.Popen(['explorer', '/select,', os.path.normpath(full_path)])
+                else:
+                    subprocess.Popen(['explorer', os.path.normpath(target_dir)])
+            elif sys.platform == 'darwin':
+                # macOS: open -R 在 Finder 中选中目标文件
+                subprocess.Popen(
+                    ['open', '-R', full_path] if os.path.isfile(full_path) else ['open', target_dir]
+                )
+            else:
+                # Linux: 优先用 D-Bus FileManager1 在文件管理器中选中文件，失败则退回 xdg-open 打开目录
+                opened = False
+                if os.path.isfile(full_path) and shutil.which('dbus-send'):
+                    proc = subprocess.Popen([
+                        'dbus-send', '--session',
+                        '--dest=org.freedesktop.FileManager1',
+                        '--type=method_call',
+                        '/org/freedesktop/FileManager1',
+                        'org.freedesktop.FileManager1.ShowItems',
+                        'array:string:"file://%s"' % urllib.parse.quote(full_path),
+                        'string:""',
+                    ])
+                    try:
+                        opened = proc.wait(timeout=5) == 0
+                    except Exception:
+                        try:
+                            proc.kill()
+                        except Exception:
+                            pass
+                if not opened:
+                    subprocess.Popen(['xdg-open', target_dir])
+        except Exception as e:
+            QMessageBox.warning(self, "提示", f"无法打开文件位置:\n{full_path}\n\n错误: {e}")
     
     def save_tag(self):
         """保存标签"""

@@ -190,7 +190,15 @@ class UIBuilder:
         info_layout.addRow("分类:", self.widgets['lbl_category'])
         
         self.widgets['lbl_file'] = self._create_wrappable_label()
-        info_layout.addRow("主文件:", self.widgets['lbl_file'])
+        file_row = QHBoxLayout()
+        file_row.setSpacing(6)
+        file_row.addWidget(self.widgets['lbl_file'], 1)
+        self.widgets['btn_open_file_location'] = QPushButton("📂 在文件夹中显示")
+        self.widgets['btn_open_file_location'].setToolTip("在文件资源管理器中显示当前选中工具的位置")
+        file_row.addWidget(self.widgets['btn_open_file_location'])
+        file_container = QWidget()
+        file_container.setLayout(file_row)
+        info_layout.addRow("主文件:", file_container)
         
         info_group.setLayout(info_layout)
         detail_splitter.addWidget(info_group)
